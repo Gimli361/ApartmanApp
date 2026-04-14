@@ -1,0 +1,207 @@
+@model List<ArizaDto>
+@{
+    ViewData["Title"] = "Arıza Yönetimi";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-tools me-2 text-primary"></i>Arıza Yönetimi</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#arizaEkleModal">
+        <i class="bi bi-plus-lg me-1"></i> Arıza Bildir
+    </button>
+</div>
+
+<!-- Filtreler -->
+<div class="card mb-3">
+    <div class="card-body py-2 d-flex gap-2 flex-wrap align-items-center">
+        <span class="text-muted small fw-semibold me-1">Durum:</span>
+        <button class="btn btn-sm btn-secondary active" onclick="filterByStatus(this, '')">Tümü</button>
+        <button class="btn btn-sm btn-outline-warning" onclick="filterByStatus(this, 'Beklemede')">
+            <i class="bi bi-hourglass-split me-1"></i>Beklemede
+        </button>
+        <button class="btn btn-sm btn-outline-primary" onclick="filterByStatus(this, 'Inceleniyor')">
+            <i class="bi bi-search me-1"></i>İnceleniyor
+        </button>
+        <button class="btn btn-sm btn-outline-success" onclick="filterByStatus(this, 'Tamamlandi')">
+            <i class="bi bi-check-circle me-1"></i>Tamamlandı
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="filterByStatus(this, 'Reddedildi')">
+            <i class="bi bi-x-circle me-1"></i>Reddedildi
+        </button>
+        <span class="ms-auto text-muted-sm" id="ariza-sayac">@Model.Count arıza</span>
+    </div>
+</div>
+
+<!-- Tablo -->
+<div class="card">
+    <div class="card-body p-0">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="arizaTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Başlık</th>
+                            <th>Daire</th>
+                            <th>Öncelik</th>
+                            <th>Durum</th>
+                            <th>Tarih</th>
+                            <th style="width:70px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in Model.OrderByDescending(x => x.Tarih))
+                        {
+                            <tr data-durum="@a.Durum" onclick="window.location='/Arizalar/Detay/@a.Id'">
+                                <td class="fw-medium">@a.Baslik</td>
+                                <td>@a.BildirenDaireNo</td>
+                                <td><span class="badge badge-durum oncelik-@a.Oncelik.ToLower()">@a.Oncelik</span></td>
+                                <td><span class="badge badge-durum durum-@a.Durum.ToLower()">@a.Durum</span></td>
+                                <td class="text-muted small">@a.Tarih.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger" title="Arızayı sil"
+                                            onclick="event.stopPropagation(); deleteAriza(@a.Id, '@a.Baslik')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="bi bi-tools"></i>
+                <p>Henüz arıza kaydı bulunmuyor.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Arıza Bildir Modal -->
+<div class="modal fade" id="arizaEkleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-tools me-2 text-primary"></i>Arıza Bildir</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Başlık <span class="zorunlu">*</span></label>
+                    <input type="text" id="arizaBaslik" class="form-control" placeholder="Örn: Asansör arızası" maxlength="100">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Açıklama</label>
+                    <textarea id="arizaAciklama" class="form-control" rows="3"
+                              placeholder="Sorunun detaylı açıklaması..." maxlength="500"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Öncelik <span class="zorunlu">*</span></label>
+                    <select id="arizaOncelik" class="form-select">
+                        <option value="Dusuk">🟢 Düşük — Acil değil</option>
+                        <option value="Orta" selected>🟡 Orta — Normal öncelik</option>
+                        <option value="Yuksek">🟠 Yüksek — Hızlı çözüm gerekli</option>
+                        <option value="Kritik">🔴 Kritik — Acil müdahale</option>
+                    </select>
+                </div>
+                <div id="arizaEkleHata" class="alert alert-danger d-none py-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="arizaKaydetBtn" onclick="reportFault()">
+                    <i class="bi bi-send me-1"></i> Bildir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function filterByStatus(btn, status) {
+    document.querySelectorAll('[onclick^="filterByStatus"]').forEach(b => {
+        b.className = b.className.replace('btn-secondary', 'btn-outline-secondary')
+                                 .replace('btn-warning', 'btn-outline-warning')
+                                 .replace('btn-primary btn-sm', 'btn-outline-primary btn-sm')
+                                 .replace('btn-success btn-sm', 'btn-outline-success btn-sm')
+                                 .replace('btn-danger btn-sm', 'btn-outline-danger btn-sm');
+        b.classList.remove('active');
+    });
+    btn.classList.remove('btn-outline-secondary','btn-outline-warning','btn-outline-primary','btn-outline-success','btn-outline-danger');
+    btn.classList.add(status === '' ? 'btn-secondary' :
+        status === 'Beklemede' ? 'btn-warning' :
+        status === 'Inceleniyor' ? 'btn-primary' :
+        status === 'Tamamlandi' ? 'btn-success' : 'btn-danger');
+    btn.classList.add('active');
+
+    let visible = 0;
+    document.querySelectorAll('#arizaTable tbody tr').forEach(row => {
+        const show = !status || row.dataset.durum === status;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    document.getElementById('ariza-sayac').textContent = visible + ' arıza';
+}
+
+function reportFault() {
+    const title = document.getElementById('arizaBaslik').value.trim();
+    if (!title) { showError('arizaEkleHata', 'Başlık alanı zorunludur.'); return; }
+
+    const btn = document.getElementById('arizaKaydetBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Gönderiliyor...';
+
+    fetch('/Arizalar/Ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            baslik: title,
+            aciklama: document.getElementById('arizaAciklama').value.trim(),
+            oncelik: document.getElementById('arizaOncelik').value
+        })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('arizaEkleModal')).hide();
+            toast('Arıza başarıyla bildirildi.', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showError('arizaEkleHata', res.message || 'Bir hata oluştu.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send me-1"></i> Bildir';
+        }
+    }).catch(() => {
+        showError('arizaEkleHata', 'Sunucuya bağlanılamadı.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-1"></i> Bildir';
+    });
+}
+
+function deleteAriza(id, title) {
+    confirmDialog(`"${title}" arızasını silmek istediğinize emin misiniz?`, () => {
+        fetch('/Arizalar/Sil?id=' + id, { method: 'DELETE' })
+        .then(r => r.json()).then(res => {
+            if (res.success) { toast('Arıza silindi.', 'success'); setTimeout(() => location.reload(), 800); }
+            else toast(res.message, 'danger');
+        });
+    });
+}
+
+function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.remove('d-none');
+}
+
+document.getElementById('arizaEkleModal').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('arizaBaslik').value = '';
+    document.getElementById('arizaAciklama').value = '';
+    document.getElementById('arizaOncelik').value = 'Orta';
+    document.getElementById('arizaEkleHata').classList.add('d-none');
+    const btn = document.getElementById('arizaKaydetBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-send me-1"></i> Bildir';
+});
+</script>
+}

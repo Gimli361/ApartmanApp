@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ApartmanApp Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <style>
+    body { background: #f0f2f5; }
+
+    /* ── Login ── */
+    #loginScreen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .login-logo { font-size: 2.5rem; }
+
+    /* ── Layout ── */
+    #appShell { display: none; min-height: 100vh; }
+    .sidebar {
+      width: 240px;
+      min-height: 100vh;
+      background: #1a1a2e;
+      color: #cdd3e0;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+    .sidebar-brand {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: .3px;
+    }
+    .sidebar-brand small { display: block; font-size: .72rem; font-weight: 400; color: #8892a4; margin-top: 2px; }
+    .nav-section-title {
+      padding: 16px 20px 6px;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #5a6478;
+    }
+    .sidebar .nav-link {
+      color: #8892a4;
+      padding: 10px 20px;
+      border-radius: 0;
+      font-size: .88rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all .15s;
+    }
+    .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
+    .sidebar .nav-link.active { color: #fff; background: rgba(99,102,241,0.25); border-left: 3px solid #6366f1; }
+    .sidebar .nav-link i { font-size: 1rem; width: 18px; text-align: center; }
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .user-badge { font-size: .8rem; color: #8892a4; }
+    .user-badge strong { color: #fff; display: block; }
+
+    /* ── Main content ── */
+    .main-content {
+      margin-left: 240px;
+      padding: 28px;
+      min-height: 100vh;
+    }
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    /* ── Cards ── */
+    .stat-card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    .stat-card .icon-box {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    /* ── Tables ── */
+    .table-card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      overflow: hidden;
+    }
+    .table-card .card-header {
+      background: #fff;
+      border-bottom: 1px solid #e9ecef;
+      padding: 16px 20px;
+      font-weight: 600;
+    }
+    .table thead th {
+      background: #f8f9fa;
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #6c757d;
+      border-bottom: 1px solid #dee2e6;
+      white-space: nowrap;
+    }
+    .table tbody td { vertical-align: middle; font-size: .88rem; }
+
+    /* ── Badges ── */
+    .badge-durum-Beklemede  { background: #fef3c7; color: #92400e; }
+    .badge-durum-Inceleniyor { background: #dbeafe; color: #1e40af; }
+    .badge-durum-Tamamlandi { background: #d1fae5; color: #065f46; }
+    .badge-durum-Reddedildi { background: #fee2e2; color: #991b1b; }
+    .badge-oncelik-Dusuk   { background: #e0f2fe; color: #0c4a6e; }
+    .badge-oncelik-Orta    { background: #fef9c3; color: #713f12; }
+    .badge-oncelik-Yuksek  { background: #ffedd5; color: #9a3412; }
+    .badge-oncelik-Kritik  { background: #fee2e2; color: #991b1b; }
+    .badge-odeme-Beklemede { background: #fef3c7; color: #92400e; }
+    .badge-odeme-Odendi    { background: #d1fae5; color: #065f46; }
+    .badge-odeme-Gecikti   { background: #fee2e2; color: #991b1b; }
+    .badge-rol-Admin { background: #ede9fe; color: #5b21b6; }
+    .badge-rol-Sakin { background: #e0f2fe; color: #0c4a6e; }
+    .custom-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+
+    /* ── Photos ── */
+    .photo-thumb {
+      width: 80px; height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform .15s;
+    }
+    .photo-thumb:hover { transform: scale(1.05); }
+
+    /* ── Toast ── */
+    #toastContainer { position: fixed; bottom: 24px; right: 24px; z-index: 9999; }
+
+    /* ── Loading overlay ── */
+    .loading-spinner { display: none; }
+    .btn.loading .loading-spinner { display: inline-block; }
+    .btn.loading .btn-text { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════ LOGIN ════════════════ -->
+<div id="loginScreen">
+  <div class="login-card card p-4">
+    <div class="card-body">
+      <div class="text-center mb-4">
+        <div class="login-logo">🏢</div>
+        <h4 class="fw-bold mt-2 mb-0">ApartmanApp</h4>
+        <p class="text-muted small">Admin Paneli</p>
+      </div>
+      <div id="loginError" class="alert alert-danger d-none"></div>
+      <form id="loginForm">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">E-posta</label>
+          <input type="email" id="loginEmail" class="form-control" placeholder="admin@example.com" required />
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Şifre</label>
+          <input type="password" id="loginSifre" class="form-control" placeholder="••••••••" required />
+        </div>
+        <button type="submit" id="loginBtn" class="btn btn-primary w-100 fw-semibold">
+          <span class="btn-text">Giriş Yap</span>
+          <span class="loading-spinner spinner-border spinner-border-sm"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ APP SHELL ════════════════ -->
+<div id="appShell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      🏢 ApartmanApp
+      <small>Admin Paneli</small>
+    </div>
+    <nav class="nav flex-column pt-2">
+      <div class="nav-section-title">Genel</div>
+      <a href="#" class="nav-link active" data-page="dashboard">
+        <i class="bi bi-grid-1x2"></i> Dashboard
+      </a>
+      <div class="nav-section-title">Yönetim</div>
+      <a href="#" class="nav-link" data-page="kullanicilar">
+        <i class="bi bi-people"></i> Kullanıcılar
+      </a>
+      <a href="#" class="nav-link" data-page="arizalar">
+        <i class="bi bi-tools"></i> Arızalar
+      </a>
+      <a href="#" class="nav-link" data-page="aidatlar">
+        <i class="bi bi-cash-stack"></i> Aidatlar
+      </a>
+      <a href="#" class="nav-link" data-page="otomatikAidat">
+        <i class="bi bi-arrow-repeat"></i> Otomatik Aidat
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge mb-2">
+        <strong id="sidebarUserName">—</strong>
+        <span id="sidebarUserRole"></span>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary w-100" onclick="logout()">
+        <i class="bi bi-box-arrow-right"></i> Çıkış
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ── DASHBOARD ── -->
+    <div id="page-dashboard" class="page-section active">
+      <h5 class="fw-bold mb-4">Dashboard</h5>
+      <div class="row g-3 mb-4" id="statsRow">
+        <div class="col-sm-6 col-xl-3">
+          <div class="card stat-card p-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                <i class="bi bi-people-fill"></i>
+              </div>
+              <div>
+                <div class="text-muted small">Toplam Kullanıcı</div>
+                <div class="fw-bold fs-5" id="statKullanici">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card stat-card p-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="icon-box bg-warning bg-opacity-10 text-warning">
+                <i class="bi bi-tools"></i>
+              </div>
+              <div>
+                <div class="text-muted small">Bekleyen Arıza</div>
+                <div class="fw-bold fs-5" id="statAriza">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card stat-card p-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="icon-box bg-danger bg-opacity-10 text-danger">
+                <i class="bi bi-cash"></i>
+              </div>
+              <div>
+                <div class="text-muted small">Ödenmemiş Aidat</div>
+                <div class="fw-bold fs-5" id="statAidat">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="card stat-card p-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="icon-box bg-success bg-opacity-10 text-success">
+                <i class="bi bi-arrow-repeat"></i>
+              </div>
+              <div>
+                <div class="text-muted small">Aktif Oto. Aidat</div>
+                <div class="fw-bold fs-5" id="statOtoAidat">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-xl-6">
+          <div class="card table-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-tools me-2 text-warning"></i>Son Arızalar</span>
+              <a href="#" class="small text-primary text-decoration-none" data-page="arizalar">Tümü</a>
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-hover mb-0" id="dashArizaTable">
+                <thead><tr><th>Başlık</th><th>Durum</th><th>Öncelik</th><th>Tarih</th></tr></thead>
+                <tbody id="dashArizaBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-6">
+          <div class="card table-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-cash me-2 text-danger"></i>Geciken Aidatlar</span>
+              <a href="#" class="small text-primary text-decoration-none" data-page="aidatlar">Tümü</a>
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-hover mb-0">
+                <thead><tr><th>Kullanıcı</th><th>Daire</th><th>Tutar</th><th>Dönem</th></tr></thead>
+                <tbody id="dashAidatBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── KULLANICILAR ── -->
+    <div id="page-kullanicilar" class="page-section">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold mb-0"><i class="bi bi-people me-2"></i>Kullanıcılar</h5>
+        <button class="btn btn-primary btn-sm" onclick="openKullaniciCreate()">
+          <i class="bi bi-plus-lg me-1"></i> Yeni Kullanıcı
+        </button>
+      </div>
+      <div class="card table-card">
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>#</th><th>Ad Soyad</th><th>E-posta</th><th>Daire</th><th>Rol</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="kullaniciBody">
+              <tr><td colspan="6" class="text-center text-muted py-4">Yükleniyor...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ARIZALAR ── -->
+    <div id="page-arizalar" class="page-section">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-tools me-2"></i>Arızalar</h5>
+        <button class="btn btn-primary btn-sm" onclick="openArizaCreate()">
+          <i class="bi bi-plus-lg me-1"></i> Yeni Arıza
+        </button>
+      </div>
+      <!-- Filters -->
+      <div class="card p-3 mb-3 border-0 shadow-sm">
+        <div class="row g-2 align-items-end">
+          <div class="col-auto">
+            <label class="form-label small mb-1">Durum</label>
+            <select id="arizaFilterDurum" class="form-select form-select-sm" onchange="renderArizalar()">
+              <option value="">Tümü</option>
+              <option>Beklemede</option>
+              <option>Inceleniyor</option>
+              <option>Tamamlandi</option>
+              <option>Reddedildi</option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <label class="form-label small mb-1">Öncelik</label>
+            <select id="arizaFilterOncelik" class="form-select form-select-sm" onchange="renderArizalar()">
+              <option value="">Tümü</option>
+              <option>Dusuk</option>
+              <option>Orta</option>
+              <option>Yuksek</option>
+              <option>Kritik</option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-outline-secondary btn-sm" onclick="loadArizalar()">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="card table-card">
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>#</th><th>Başlık</th><th>Bildiren</th><th>Daire</th>
+                <th>Öncelik</th><th>Durum</th><th>Tarih</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="arizaBody">
+              <tr><td colspan="8" class="text-center text-muted py-4">Yükleniyor...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AIDATLAR ── -->
+    <div id="page-aidatlar" class="page-section">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-cash-stack me-2"></i>Aidatlar</h5>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary btn-sm" onclick="openUretModal()">
+            <i class="bi bi-magic me-1"></i> Aylık Üret
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openAidatCreate()">
+            <i class="bi bi-plus-lg me-1"></i> Yeni Aidat
+          </button>
+        </div>
+      </div>
+      <!-- Filters -->
+      <div class="card p-3 mb-3 border-0 shadow-sm">
+        <div class="row g-2 align-items-end">
+          <div class="col-auto">
+            <label class="form-label small mb-1">Ay</label>
+            <select id="aidatFilterAy" class="form-select form-select-sm" onchange="renderAidatlar()">
+              <option value="">Tümü</option>
+              <option value="1">Ocak</option><option value="2">Şubat</option>
+              <option value="3">Mart</option><option value="4">Nisan</option>
+              <option value="5">Mayıs</option><option value="6">Haziran</option>
+              <option value="7">Temmuz</option><option value="8">Ağustos</option>
+              <option value="9">Eylül</option><option value="10">Ekim</option>
+              <option value="11">Kasım</option><option value="12">Aralık</option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <label class="form-label small mb-1">Yıl</label>
+            <input type="number" id="aidatFilterYil" class="form-control form-control-sm" style="width:90px"
+              placeholder="2025" onchange="renderAidatlar()" />
+          </div>
+          <div class="col-auto">
+            <label class="form-label small mb-1">Durum</label>
+            <select id="aidatFilterDurum" class="form-select form-select-sm" onchange="renderAidatlar()">
+              <option value="">Tümü</option>
+              <option>Beklemede</option>
+              <option>Odendi</option>
+              <option>Gecikti</option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-outline-secondary btn-sm" onclick="loadAidatlar()">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="card table-card">
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>#</th><th>Kullanıcı</th><th>Daire</th><th>Tutar</th>
+                <th>Dönem</th><th>Durum</th><th>Ödeme Tarihi</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="aidatBody">
+              <tr><td colspan="8" class="text-center text-muted py-4">Yükleniyor...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── OTOMATİK AİDAT ── -->
+    <div id="page-otomatikAidat" class="page-section">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold mb-0"><i class="bi bi-arrow-repeat me-2"></i>Otomatik Aidat</h5>
+        <button class="btn btn-primary btn-sm" onclick="openOtoCreate()">
+          <i class="bi bi-plus-lg me-1"></i> Konfigürasyon Ekle
+        </button>
+      </div>
+      <div class="card table-card">
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>#</th><th>Kullanıcı</th><th>Daire</th><th>Tutar</th>
+                <th>Durum</th><th>Son Üretim</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="otoAidatBody">
+              <tr><td colspan="7" class="text-center text-muted py-4">Yükleniyor...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ════════════════ MODALS ════════════════ -->
+
+<!-- Kullanıcı Create/Edit Modal -->
+<div class="modal fade" id="kullaniciModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="kullaniciModalTitle">Yeni Kullanıcı</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="kullaniciEditId" />
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label">Ad</label>
+            <input type="text" id="kAd" class="form-control" />
+          </div>
+          <div class="col-6">
+            <label class="form-label">Soyad</label>
+            <input type="text" id="kSoyad" class="form-control" />
+          </div>
+          <div class="col-12">
+            <label class="form-label">E-posta</label>
+            <input type="email" id="kEmail" class="form-control" />
+          </div>
+          <div class="col-6">
+            <label class="form-label">Daire No</label>
+            <input type="text" id="kDaireNo" class="form-control" />
+          </div>
+          <div class="col-6">
+            <label class="form-label">Rol</label>
+            <select id="kRol" class="form-select">
+              <option value="Sakin">Sakin</option>
+              <option value="Admin">Admin</option>
+            </select>
+          </div>
+          <div class="col-12" id="kSifreGroup">
+            <label class="form-label">Şifre</label>
+            <input type="password" id="kSifre" class="form-control" />
+          </div>
+        </div>
+        <div id="kullaniciModalError" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button class="btn btn-primary" id="kullaniciSaveBtn" onclick="saveKullanici()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arıza Create Modal -->
+<div class="modal fade" id="arizaCreateModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Yeni Arıza</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Başlık</label>
+          <input type="text" id="aBaslik" class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Açıklama</label>
+          <textarea id="aAciklama" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label">Öncelik</label>
+            <select id="aOncelik" class="form-select">
+              <option value="Dusuk">Düşük</option>
+              <option value="Orta" selected>Orta</option>
+              <option value="Yuksek">Yüksek</option>
+              <option value="Kritik">Kritik</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Bildiren Kullanıcı</label>
+            <select id="aBildirenId" class="form-select"></select>
+          </div>
+        </div>
+        <div id="arizaCreateError" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button class="btn btn-primary" onclick="saveAriza()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arıza Detail Modal -->
+<div class="modal fade" id="arizaDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="arizaDetailTitle">Arıza Detayı</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="arizaDetailBody">
+        <!-- dynamic content -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Aidat Create Modal -->
+<div class="modal fade" id="aidatCreateModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Yeni Aidat</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Kullanıcı</label>
+          <select id="adKullanici" class="form-select"></select>
+        </div>
+        <div class="row g-3">
+          <div class="col-4">
+            <label class="form-label">Tutar (₺)</label>
+            <input type="number" id="adTutar" class="form-control" step="0.01" />
+          </div>
+          <div class="col-4">
+            <label class="form-label">Ay</label>
+            <select id="adAy" class="form-select">
+              <option value="1">Ocak</option><option value="2">Şubat</option>
+              <option value="3">Mart</option><option value="4">Nisan</option>
+              <option value="5">Mayıs</option><option value="6">Haziran</option>
+              <option value="7">Temmuz</option><option value="8">Ağustos</option>
+              <option value="9">Eylül</option><option value="10">Ekim</option>
+              <option value="11">Kasım</option><option value="12">Aralık</option>
+            </select>
+          </div>
+          <div class="col-4">
+            <label class="form-label">Yıl</label>
+            <input type="number" id="adYil" class="form-control" value="2025" />
+          </div>
+        </div>
+        <div id="aidatCreateError" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button class="btn btn-primary" onclick="saveAidat()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Aidat Ödeme Durum Modal -->
+<div class="modal fade" id="aidatDurumModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Ödeme Durumu</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="aidatDurumId" />
+        <select id="aidatDurumSelect" class="form-select">
+          <option value="Beklemede">Beklemede</option>
+          <option value="Odendi">Ödendi</option>
+          <option value="Gecikti">Gecikti</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button class="btn btn-primary" onclick="saveAidatDurum()">Güncelle</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Aidat Üret Modal -->
+<div class="modal fade" id="uretModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Aylık Aidat Üret</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Ay</label>
+          <select id="uretAy" class="form-select">
+            <option value="1">Ocak</option><option value="2">Şubat</option>
+            <option value="3">Mart</option><option value="4">Nisan</option>
+            <option value="5">Mayıs</option><option value="6">Haziran</option>
+            <option value="7">Temmuz</option><option value="8">Ağustos</option>
+            <option value="9">Eylül</option><option value="10">Ekim</option>
+            <option value="11">Kasım</option><option value="12">Aralık</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Yıl</label>
+          <input type="number" id="uretYil" class="form-control" value="2025" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button class="btn btn-success" onclick="uretAidat()">Üret</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Otomatik Aidat Create Modal -->
+<div class="modal fade" id="otoCreateModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Otomatik Aidat Ekle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Kullanıcı</label>
+          <select id="otoKullanici" class="form-select"></select>
+        </div>
+        <div>
+          <label class="form-label">Aylık Tutar (₺)</label>
+          <input type="number" id="otoTutar" class="form-control" step="0.01" />
+        </div>
+        <div id="otoCreateError" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button class="btn btn-primary" onclick="saveOtoAidat()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Otomatik Aidat Tutar Modal -->
+<div class="modal fade" id="otoTutarModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Tutar Güncelle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="otoTutarId" />
+        <label class="form-label">Yeni Tutar (₺)</label>
+        <input type="number" id="otoTutarInput" class="form-control" step="0.01" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button class="btn btn-primary" onclick="saveOtoTutar()">Güncelle</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Foto Full Screen Modal -->
+<div class="modal fade" id="fotoModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-dark border-0">
+      <div class="modal-body p-1 text-center">
+        <img id="fotoModalImg" src="" class="img-fluid rounded" style="max-height:80vh" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const API = 'http://localhost:5255/api';
+
+// ── State ──
+let token = localStorage.getItem('apt_token');
+let currentUser = JSON.parse(localStorage.getItem('apt_user') || 'null');
+let allKullanicilar = [];
+let allArizalar = [];
+let allAidatlar = [];
+let allOtoAidatlar = [];
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  if (token && currentUser) {
+    showApp();
+    loadDashboard();
+  }
+
+  // Sidebar nav
+  document.querySelectorAll('[data-page]').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      navigateTo(link.dataset.page);
+    });
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', doLogin);
+});
+
+// ── Navigation ──
+function navigateTo(page) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('[data-page]').forEach(l => l.classList.remove('active'));
+  document.getElementById('page-' + page)?.classList.add('active');
+  document.querySelectorAll(`[data-page="${page}"]`).forEach(l => l.classList.add('active'));
+
+  const loaders = {
+    dashboard:    loadDashboard,
+    kullanicilar: loadKullanicilar,
+    arizalar:     loadArizalar,
+    aidatlar:     loadAidatlar,
+    otomatikAidat: loadOtoAidatlar,
+  };
+  loaders[page]?.();
+}
+
+// ── HTTP ──
+async function http(method, path, body = null, isForm = false) {
+  const opts = {
+    method,
+    headers: { 'Authorization': `Bearer ${token}` }
+  };
+  if (body && !isForm) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if (isForm) {
+    opts.body = body; // FormData
+  }
+  const res = await fetch(API + path, opts);
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw data;
+  return data;
+}
+
+// ── Toast ──
+function toast(msg, type = 'success') {
+  const id = 'toast_' + Date.now();
+  const icons = { success: 'bi-check-circle-fill text-success', danger: 'bi-x-circle-fill text-danger', warning: 'bi-exclamation-circle-fill text-warning' };
+  const el = document.createElement('div');
+  el.id = id;
+  el.className = 'toast align-items-center border-0 shadow mb-2';
+  el.setAttribute('role', 'alert');
+  el.innerHTML = `
+    <div class="d-flex">
+      <div class="toast-body d-flex align-items-center gap-2">
+        <i class="bi ${icons[type] || icons.success}"></i> ${msg}
+      </div>
+      <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>`;
+  document.getElementById('toastContainer').appendChild(el);
+  const t = new bootstrap.Toast(el, { delay: 3500 });
+  t.show();
+  el.addEventListener('hidden.bs.toast', () => el.remove());
+}
+
+function errMsg(e) {
+  if (Array.isArray(e)) return e.join(', ');
+  if (typeof e === 'string') return e;
+  return e?.message || e?.title || 'Bir hata oluştu';
+}
+
+// ── AUTH ──
+async function doLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  btn.classList.add('loading');
+  const errEl = document.getElementById('loginError');
+  errEl.classList.add('d-none');
+
+  try {
+    const res = await http('POST', '/auth/login', {
+      email: document.getElementById('loginEmail').value,
+      sifre: document.getElementById('loginSifre').value
+    });
+    token = res.data.token;
+    currentUser = res.data.user;
+    localStorage.setItem('apt_token', token);
+    localStorage.setItem('apt_user', JSON.stringify(currentUser));
+    showApp();
+    loadDashboard();
+  } catch (err) {
+    errEl.textContent = errMsg(err);
+    errEl.classList.remove('d-none');
+  } finally {
+    btn.classList.remove('loading');
+  }
+}
+
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'flex';
+  document.getElementById('sidebarUserName').textContent = currentUser?.adSoyad || '—';
+  document.getElementById('sidebarUserRole').textContent = currentUser?.rol || '';
+}
+
+function logout() {
+  if (!confirm('Çıkış yapmak istediğinizden emin misiniz?')) return;
+  localStorage.removeItem('apt_token');
+  localStorage.removeItem('apt_user');
+  token = null; currentUser = null;
+  document.getElementById('loginScreen').style.display = '';
+  document.getElementById('appShell').style.display = 'none';
+}
+
+// ── HELPERS ──
+function durumBadge(d)  { return `<span class="custom-badge badge-durum-${d}">${d}</span>`; }
+function oncelikBadge(o){ return `<span class="custom-badge badge-oncelik-${o}">${o}</span>`; }
+function odemeBadge(d)  { return `<span class="custom-badge badge-odeme-${d}">${d}</span>`; }
+function rolBadge(r)    { return `<span class="custom-badge badge-rol-${r}">${r}</span>`; }
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' });
+}
+function ayAdi(a) {
+  return ['','Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'][a] || a;
+}
+function photoUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  return 'http://localhost:5255/' + path.replace(/^\//, '');
+}
+
+// ── DASHBOARD ──
+async function loadDashboard() {
+  try {
+    const [ku, ar, ai, ot] = await Promise.all([
+      http('GET', '/kullanici'),
+      http('GET', '/ariza'),
+      http('GET', '/aidat'),
+      http('GET', '/otomatik-aidat'),
+    ]);
+    const kullanicilar = ku.data || [];
+    const arizalar = ar.data || [];
+    const aidatlar = ai.data || [];
+    const otoAidatlar = ot.data || [];
+
+    document.getElementById('statKullanici').textContent = kullanicilar.length;
+    document.getElementById('statAriza').textContent = arizalar.filter(a => a.durum === 'Beklemede').length;
+    document.getElementById('statAidat').textContent = aidatlar.filter(a => a.odemeDurumu !== 'Odendi').length;
+    document.getElementById('statOtoAidat').textContent = otoAidatlar.filter(o => o.aktifMi).length;
+
+    // Son 5 arıza
+    const tbody = document.getElementById('dashArizaBody');
+    tbody.innerHTML = arizalar.slice(0, 5).map(a => `
+      <tr>
+        <td>${a.baslik}</td>
+        <td>${durumBadge(a.durum)}</td>
+        <td>${oncelikBadge(a.oncelik)}</td>
+        <td class="text-muted small">${fmtDate(a.tarih)}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted">Veri yok</td></tr>';
+
+    // Geciken aidatlar
+    const geciken = aidatlar.filter(a => a.odemeDurumu === 'Gecikti').slice(0, 5);
+    const abody = document.getElementById('dashAidatBody');
+    abody.innerHTML = geciken.map(a => `
+      <tr>
+        <td>${a.kullaniciAdSoyad}</td>
+        <td>${a.daireNo}</td>
+        <td>₺${a.tutar.toFixed(2)}</td>
+        <td class="text-muted small">${ayAdi(a.ay)} ${a.yil}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted">Geciken aidat yok</td></tr>';
+  } catch(e) {
+    toast('Dashboard yüklenemedi: ' + errMsg(e), 'danger');
+  }
+}
+
+// ── KULLANICILAR ──
+async function loadKullanicilar() {
+  try {
+    const res = await http('GET', '/kullanici');
+    allKullanicilar = res.data || [];
+    renderKullanicilar();
+  } catch(e) { toast('Kullanıcılar yüklenemedi: ' + errMsg(e), 'danger'); }
+}
+
+function renderKullanicilar() {
+  const tbody = document.getElementById('kullaniciBody');
+  if (!allKullanicilar.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Kayıt yok</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allKullanicilar.map(k => `
+    <tr>
+      <td class="text-muted small">${k.id}</td>
+      <td class="fw-semibold">${k.adSoyad}</td>
+      <td>${k.email}</td>
+      <td><span class="badge bg-light text-dark border">${k.daireNo}</span></td>
+      <td>${rolBadge(k.rol)}</td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-primary me-1" onclick="openKullaniciEdit(${k.id})">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteKullanici(${k.id}, '${k.adSoyad}')">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+function openKullaniciCreate() {
+  document.getElementById('kullaniciEditId').value = '';
+  document.getElementById('kullaniciModalTitle').textContent = 'Yeni Kullanıcı';
+  document.getElementById('kAd').value = '';
+  document.getElementById('kSoyad').value = '';
+  document.getElementById('kEmail').value = '';
+  document.getElementById('kDaireNo').value = '';
+  document.getElementById('kRol').value = 'Sakin';
+  document.getElementById('kSifre').value = '';
+  document.getElementById('kSifreGroup').style.display = '';
+  document.getElementById('kullaniciModalError').classList.add('d-none');
+  new bootstrap.Modal('#kullaniciModal').show();
+}
+
+function openKullaniciEdit(id) {
+  const k = allKullanicilar.find(x => x.id === id);
+  if (!k) return;
+  document.getElementById('kullaniciEditId').value = id;
+  document.getElementById('kullaniciModalTitle').textContent = 'Kullanıcı Düzenle';
+  // adSoyad'ı parçala
+  const parts = (k.adSoyad || '').split(' ');
+  document.getElementById('kAd').value = parts[0] || '';
+  document.getElementById('kSoyad').value = parts.slice(1).join(' ') || '';
+  document.getElementById('kEmail').value = k.email;
+  document.getElementById('kDaireNo').value = k.daireNo;
+  document.getElementById('kRol').value = k.rol;
+  document.getElementById('kSifreGroup').style.display = 'none';
+  document.getElementById('kullaniciModalError').classList.add('d-none');
+  new bootstrap.Modal('#kullaniciModal').show();
+}
+
+async function saveKullanici() {
+  const editId = document.getElementById('kullaniciEditId').value;
+  const errEl = document.getElementById('kullaniciModalError');
+  errEl.classList.add('d-none');
+
+  const ad = document.getElementById('kAd').value.trim();
+  const soyad = document.getElementById('kSoyad').value.trim();
+  const email = document.getElementById('kEmail').value.trim();
+  const daireNo = document.getElementById('kDaireNo').value.trim();
+  const rol = document.getElementById('kRol').value;
+  const sifre = document.getElementById('kSifre').value;
+
+  if (!ad || !soyad || !email || !daireNo) {
+    errEl.textContent = 'Tüm alanları doldurun.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+
+  try {
+    if (editId) {
+      await http('PUT', `/kullanici/${editId}`, { ad, soyad, email, daireNo, rol });
+      toast('Kullanıcı güncellendi');
+    } else {
+      if (!sifre) { errEl.textContent = 'Şifre zorunludur.'; errEl.classList.remove('d-none'); return; }
+      await http('POST', '/kullanici', { ad, soyad, email, daireNo, rol, sifre });
+      toast('Kullanıcı oluşturuldu');
+    }
+    bootstrap.Modal.getInstance('#kullaniciModal')?.hide();
+    loadKullanicilar();
+  } catch(e) {
+    errEl.textContent = errMsg(e);
+    errEl.classList.remove('d-none');
+  }
+}
+
+async function deleteKullanici(id, name) {
+  if (!confirm(`"${name}" kullanıcısını silmek istediğinizden emin misiniz?`)) return;
+  try {
+    await http('DELETE', `/kullanici/${id}`);
+    toast('Kullanıcı silindi');
+    loadKullanicilar();
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+
+// ── ARIZALAR ──
+async function loadArizalar() {
+  try {
+    const res = await http('GET', '/ariza');
+    allArizalar = res.data || [];
+    renderArizalar();
+  } catch(e) { toast('Arızalar yüklenemedi: ' + errMsg(e), 'danger'); }
+}
+
+function renderArizalar() {
+  const filterDurum = document.getElementById('arizaFilterDurum').value;
+  const filterOncelik = document.getElementById('arizaFilterOncelik').value;
+  let data = allArizalar;
+  if (filterDurum) data = data.filter(a => a.durum === filterDurum);
+  if (filterOncelik) data = data.filter(a => a.oncelik === filterOncelik);
+
+  const tbody = document.getElementById('arizaBody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Kayıt yok</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(a => `
+    <tr>
+      <td class="text-muted small">${a.id}</td>
+      <td class="fw-semibold">${a.baslik}</td>
+      <td>${a.bildirenAdSoyad}</td>
+      <td><span class="badge bg-light text-dark border">${a.bildirenDaireNo}</span></td>
+      <td>${oncelikBadge(a.oncelik)}</td>
+      <td>${durumBadge(a.durum)}</td>
+      <td class="text-muted small">${fmtDate(a.tarih)}</td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-primary me-1" onclick="openArizaDetail(${a.id})">
+          <i class="bi bi-eye"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteAriza(${a.id}, '${a.baslik.replace(/'/g,"\\'")}')">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+function openArizaCreate() {
+  // Kullanıcı listesini doldur
+  const sel = document.getElementById('aBildirenId');
+  sel.innerHTML = allKullanicilar.map(k => `<option value="${k.id}">${k.adSoyad} (${k.daireNo})</option>`).join('');
+  if (!allKullanicilar.length) loadKullanicilar().then(() => {
+    sel.innerHTML = allKullanicilar.map(k => `<option value="${k.id}">${k.adSoyad} (${k.daireNo})</option>`).join('');
+  });
+  document.getElementById('aBaslik').value = '';
+  document.getElementById('aAciklama').value = '';
+  document.getElementById('aOncelik').value = 'Orta';
+  document.getElementById('arizaCreateError').classList.add('d-none');
+  new bootstrap.Modal('#arizaCreateModal').show();
+}
+
+async function saveAriza() {
+  const errEl = document.getElementById('arizaCreateError');
+  errEl.classList.add('d-none');
+  const baslik = document.getElementById('aBaslik').value.trim();
+  const aciklama = document.getElementById('aAciklama').value.trim();
+  const oncelik = document.getElementById('aOncelik').value;
+  const bildirenId = parseInt(document.getElementById('aBildirenId').value);
+
+  if (!baslik || !aciklama) {
+    errEl.textContent = 'Başlık ve açıklama zorunludur.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+  try {
+    await http('POST', '/ariza', { baslik, aciklama, oncelik, bildirenId });
+    toast('Arıza oluşturuldu');
+    bootstrap.Modal.getInstance('#arizaCreateModal')?.hide();
+    loadArizalar();
+  } catch(e) {
+    errEl.textContent = errMsg(e);
+    errEl.classList.remove('d-none');
+  }
+}
+
+async function openArizaDetail(id) {
+  const modal = new bootstrap.Modal('#arizaDetailModal');
+  document.getElementById('arizaDetailTitle').textContent = 'Arıza #' + id;
+  document.getElementById('arizaDetailBody').innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div></div>';
+  modal.show();
+
+  try {
+    const [detailRes, fotoRes] = await Promise.all([
+      http('GET', `/ariza/${id}`),
+      http('GET', `/ariza/${id}/foto`),
+    ]);
+    const a = detailRes.data;
+    const fotolar = fotoRes.data || [];
+
+    document.getElementById('arizaDetailTitle').textContent = a.baslik;
+    document.getElementById('arizaDetailBody').innerHTML = `
+      <div class="row g-3 mb-3">
+        <div class="col-sm-6">
+          <div class="text-muted small mb-1">Durum</div>
+          <div class="d-flex align-items-center gap-2">
+            ${durumBadge(a.durum)}
+            <select id="detailDurumSel" class="form-select form-select-sm w-auto">
+              <option value="Beklemede" ${a.durum==='Beklemede'?'selected':''}>Beklemede</option>
+              <option value="Inceleniyor" ${a.durum==='Inceleniyor'?'selected':''}>İnceleniyor</option>
+              <option value="Tamamlandi" ${a.durum==='Tamamlandi'?'selected':''}>Tamamlandı</option>
+              <option value="Reddedildi" ${a.durum==='Reddedildi'?'selected':''}>Reddedildi</option>
+            </select>
+            <button class="btn btn-sm btn-primary" onclick="updateArizaDurum(${id})">Güncelle</button>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div class="text-muted small mb-1">Öncelik</div>
+          ${oncelikBadge(a.oncelik)}
+        </div>
+        <div class="col-sm-6">
+          <div class="text-muted small mb-1">Bildiren</div>
+          <span>${a.bildirenAdSoyad} — Daire ${a.bildirenDaireNo}</span>
+        </div>
+        <div class="col-sm-6">
+          <div class="text-muted small mb-1">Tarih</div>
+          <span>${fmtDate(a.tarih)}</span>
+        </div>
+        <div class="col-12">
+          <div class="text-muted small mb-1">Açıklama</div>
+          <p class="mb-0">${a.aciklama}</p>
+        </div>
+      </div>
+
+      <hr />
+
+      <div class="mb-2 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Fotoğraflar (${fotolar.length})</span>
+        <label class="btn btn-sm btn-outline-primary mb-0">
+          <i class="bi bi-upload me-1"></i> Fotoğraf Yükle
+          <input type="file" accept="image/*" class="d-none" onchange="uploadFoto(${id}, this)" />
+        </label>
+      </div>
+      <div id="fotoGrid" class="d-flex flex-wrap gap-2">
+        ${fotolar.map(f => `
+          <div class="position-relative" id="fotoItem_${f.id}">
+            <img src="${photoUrl(f.fotoUrl)}" class="photo-thumb" onclick="viewFoto('${photoUrl(f.fotoUrl)}')" />
+            <button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0"
+              style="width:20px;height:20px;font-size:.6rem;border-radius:50%;line-height:1"
+              onclick="deleteFoto(${id}, ${f.id})">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>`).join('')}
+        ${!fotolar.length ? '<span class="text-muted small">Fotoğraf yok</span>' : ''}
+      </div>`;
+  } catch(e) {
+    document.getElementById('arizaDetailBody').innerHTML = `<div class="alert alert-danger">${errMsg(e)}</div>`;
+  }
+}
+
+async function updateArizaDurum(id) {
+  const durum = document.getElementById('detailDurumSel').value;
+  try {
+    await http('PATCH', `/ariza/${id}/durum`, { durum });
+    toast('Durum güncellendi');
+    loadArizalar();
+    // Badge'i güncelle
+    const badge = document.querySelector('#arizaDetailBody .custom-badge[class*="badge-durum"]');
+    if (badge) { badge.className = `custom-badge badge-durum-${durum}`; badge.textContent = durum; }
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+
+async function uploadFoto(arizaId, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('dosya', file);
+  try {
+    const res = await http('POST', `/ariza/${arizaId}/foto`, fd, true);
+    toast('Fotoğraf yüklendi');
+    // Grid'i güncelle
+    const grid = document.getElementById('fotoGrid');
+    const noFoto = grid.querySelector('.text-muted');
+    if (noFoto) noFoto.remove();
+    const f = res.data;
+    const div = document.createElement('div');
+    div.className = 'position-relative';
+    div.id = `fotoItem_${f.id}`;
+    div.innerHTML = `
+      <img src="${photoUrl(f.fotoUrl)}" class="photo-thumb" onclick="viewFoto('${photoUrl(f.fotoUrl)}')" />
+      <button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0"
+        style="width:20px;height:20px;font-size:.6rem;border-radius:50%;line-height:1"
+        onclick="deleteFoto(${arizaId}, ${f.id})">
+        <i class="bi bi-x"></i>
+      </button>`;
+    grid.appendChild(div);
+  } catch(e) { toast('Yükleme hatası: ' + errMsg(e), 'danger'); }
+  input.value = '';
+}
+
+async function deleteFoto(arizaId, fotoId) {
+  if (!confirm('Bu fotoğrafı silmek istediğinizden emin misiniz?')) return;
+  try {
+    await http('DELETE', `/ariza/${arizaId}/foto/${fotoId}`);
+    document.getElementById(`fotoItem_${fotoId}`)?.remove();
+    toast('Fotoğraf silindi');
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+
+function viewFoto(url) {
+  document.getElementById('fotoModalImg').src = url;
+  new bootstrap.Modal('#fotoModal').show();
+}
+
+async function deleteAriza(id, baslik) {
+  if (!confirm(`"${baslik}" arızasını silmek istediğinizden emin misiniz?`)) return;
+  try {
+    await http('DELETE', `/ariza/${id}`);
+    toast('Arıza silindi');
+    loadArizalar();
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+
+// ── AİDATLAR ──
+async function loadAidatlar() {
+  try {
+    const res = await http('GET', '/aidat');
+    allAidatlar = res.data || [];
+    renderAidatlar();
+  } catch(e) { toast('Aidatlar yüklenemedi: ' + errMsg(e), 'danger'); }
+}
+
+function renderAidatlar() {
+  const fAy = document.getElementById('aidatFilterAy').value;
+  const fYil = document.getElementById('aidatFilterYil').value;
+  const fDurum = document.getElementById('aidatFilterDurum').value;
+  let data = allAidatlar;
+  if (fAy) data = data.filter(a => a.ay == fAy);
+  if (fYil) data = data.filter(a => a.yil == fYil);
+  if (fDurum) data = data.filter(a => a.odemeDurumu === fDurum);
+
+  const tbody = document.getElementById('aidatBody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Kayıt yok</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(a => `
+    <tr>
+      <td class="text-muted small">${a.id}</td>
+      <td>${a.kullaniciAdSoyad}</td>
+      <td><span class="badge bg-light text-dark border">${a.daireNo}</span></td>
+      <td class="fw-semibold">₺${a.tutar.toFixed(2)}</td>
+      <td class="text-muted small">${ayAdi(a.ay)} ${a.yil}</td>
+      <td>${odemeBadge(a.odemeDurumu)}</td>
+      <td class="text-muted small">${fmtDate(a.odemeTarihi)}</td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-success me-1" onclick="openAidatDurum(${a.id}, '${a.odemeDurumu}')">
+          <i class="bi bi-check2-circle"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteAidat(${a.id})">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+function openAidatCreate() {
+  const sel = document.getElementById('adKullanici');
+  sel.innerHTML = allKullanicilar.map(k => `<option value="${k.id}">${k.adSoyad} (${k.daireNo})</option>`).join('');
+  if (!allKullanicilar.length) loadKullanicilar().then(() => {
+    sel.innerHTML = allKullanicilar.map(k => `<option value="${k.id}">${k.adSoyad} (${k.daireNo})</option>`).join('');
+  });
+  document.getElementById('adTutar').value = '';
+  const now = new Date();
+  document.getElementById('adAy').value = now.getMonth() + 1;
+  document.getElementById('adYil').value = now.getFullYear();
+  document.getElementById('aidatCreateError').classList.add('d-none');
+  new bootstrap.Modal('#aidatCreateModal').show();
+}
+
+async function saveAidat() {
+  const errEl = document.getElementById('aidatCreateError');
+  errEl.classList.add('d-none');
+  const kullaniciId = parseInt(document.getElementById('adKullanici').value);
+  const tutar = parseFloat(document.getElementById('adTutar').value);
+  const ay = parseInt(document.getElementById('adAy').value);
+  const yil = parseInt(document.getElementById('adYil').value);
+
+  if (!tutar || tutar <= 0) {
+    errEl.textContent = 'Geçerli bir tutar girin.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+  try {
+    await http('POST', '/aidat', { kullaniciId, tutar, ay, yil });
+    toast('Aidat oluşturuldu');
+    bootstrap.Modal.getInstance('#aidatCreateModal')?.hide();
+    loadAidatlar();
+  } catch(e) {
+    errEl.textContent = errMsg(e);
+    errEl.classList.remove('d-none');
+  }
+}
+
+function openAidatDurum(id, current) {
+  document.getElementById('aidatDurumId').value = id;
+  document.getElementById('aidatDurumSelect').value = current;
+  new bootstrap.Modal('#aidatDurumModal').show();
+}
+
+async function saveAidatDurum() {
+  const id = document.getElementById('aidatDurumId').value;
+  const odemeDurumu = document.getElementById('aidatDurumSelect').value;
+  try {
+    await http('PATCH', `/aidat/${id}/odemeDurumu`, { odemeDurumu });
+    toast('Ödeme durumu güncellendi');
+    bootstrap.Modal.getInstance('#aidatDurumModal')?.hide();
+    loadAidatlar();
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+
+async function deleteAidat(id) {
+  if (!confirm('Bu aidat kaydını silmek istediğinizden emin misiniz?')) return;
+  try {
+    await http('DELETE', `/aidat/${id}`);
+    toast('Aidat silindi');
+    loadAidatlar();
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+
+function openUretModal() {
+  const now = new Date();
+  document.getElementById('uretAy').value = now.getMonth() + 1;
+  document.getElementById('uretYil').value = now.getFullYear();
+  new bootstrap.Modal('#uretModal').show();
+}
+
+async function uretAidat() {
+  const ay = parseInt(document.getElementById('uretAy').value);
+  const yil = parseInt(document.getElementById('uretYil').value);
+  try {
+    const res = await http('POST', '/otomatik-aidat/uret', { ay, yil });
+    toast(`${res.uretilen} aidat kaydı oluşturuldu`);
+    bootstrap.Modal.getInstance('#uretModal')?.hide();
+    loadAidatlar();
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+
+// ── OTOMATİK AİDAT ──
+async function loadOtoAidatlar() {
+  try {
+    const res = await http('GET', '/otomatik-aidat');
+    allOtoAidatlar = res.data || [];
+    renderOtoAidatlar();
+  } catch(e) { toast('Otomatik aidatlar yüklenemedi: ' + errMsg(e), 'danger'); }
+}
+
+function renderOtoAidatlar() {
+  const tbody = document.getElementById('otoAidatBody');
+  if (!allOtoAidatlar.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Kayıt yok</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allOtoAidatlar.map(o => `
+    <tr>
+      <td class="text-muted small">${o.id}</td>
+      <td>${o.kullaniciAdSoyad}</td>
+      <td><span class="badge bg-light text-dark border">${o.daireNo}</span></td>
+      <td class="fw-semibold">₺${o.tutar.toFixed(2)}</td>
+      <td>
+        <span class="badge ${o.aktifMi ? 'bg-success' : 'bg-secondary'}">${o.aktifMi ? 'Aktif' : 'Pasif'}</span>
+      </td>
+      <td class="text-muted small">
+        ${o.sonUretimAy ? `${ayAdi(o.sonUretimAy)} ${o.sonUretimYil}` : '—'}
+      </td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-secondary me-1" onclick="toggleOto(${o.id})" title="${o.aktifMi ? 'Pasif Yap' : 'Aktif Yap'}">
+          <i class="bi bi-toggle-${o.aktifMi ? 'on text-success' : 'off'}"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-warning me-1" onclick="openOtoTutar(${o.id}, ${o.tutar})" title="Tutar Güncelle">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteOtoAidat(${o.id})">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+function openOtoCreate() {
+  const sel = document.getElementById('otoKullanici');
+  sel.innerHTML = allKullanicilar.map(k => `<option value="${k.id}">${k.adSoyad} (${k.daireNo})</option>`).join('');
+  if (!allKullanicilar.length) loadKullanicilar().then(() => {
+    sel.innerHTML = allKullanicilar.map(k => `<option value="${k.id}">${k.adSoyad} (${k.daireNo})</option>`).join('');
+  });
+  document.getElementById('otoTutar').value = '';
+  document.getElementById('otoCreateError').classList.add('d-none');
+  new bootstrap.Modal('#otoCreateModal').show();
+}
+
+async function saveOtoAidat() {
+  const errEl = document.getElementById('otoCreateError');
+  errEl.classList.add('d-none');
+  const kullaniciId = parseInt(document.getElementById('otoKullanici').value);
+  const tutar = parseFloat(document.getElementById('otoTutar').value);
+  if (!tutar || tutar <= 0) {
+    errEl.textContent = 'Geçerli bir tutar girin.'; errEl.classList.remove('d-none'); return;
+  }
+  try {
+    await http('POST', '/otomatik-aidat', { kullaniciId, tutar });
+    toast('Otomatik aidat eklendi');
+    bootstrap.Modal.getInstance('#otoCreateModal')?.hide();
+    loadOtoAidatlar();
+  } catch(e) {
+    errEl.textContent = errMsg(e); errEl.classList.remove('d-none');
+  }
+}
+
+async function toggleOto(id) {
+  try {
+    await http('PATCH', `/otomatik-aidat/${id}/toggle`);
+    toast('Durum güncellendi');
+    loadOtoAidatlar();
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+
+function openOtoTutar(id, current) {
+  document.getElementById('otoTutarId').value = id;
+  document.getElementById('otoTutarInput').value = current;
+  new bootstrap.Modal('#otoTutarModal').show();
+}
+
+async function saveOtoTutar() {
+  const id = document.getElementById('otoTutarId').value;
+  const tutar = parseFloat(document.getElementById('otoTutarInput').value);
+  try {
+    await http('PATCH', `/otomatik-aidat/${id}/tutar`, { tutar });
+    toast('Tutar güncellendi');
+    bootstrap.Modal.getInstance('#otoTutarModal')?.hide();
+    loadOtoAidatlar();
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+
+async function deleteOtoAidat(id) {
+  if (!confirm('Bu otomatik aidat konfigürasyonunu silmek istediğinizden emin misiniz?')) return;
+  try {
+    await http('DELETE', `/otomatik-aidat/${id}`);
+    toast('Silindi');
+    loadOtoAidatlar();
+  } catch(e) { toast(errMsg(e), 'danger'); }
+}
+</script>
+</body>
+</html>

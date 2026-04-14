@@ -1,0 +1,172 @@
+@model ArizaDetayViewModel
+@{
+    ViewData["Title"] = "Arıza Detayı";
+    var arDurum = Model.Ariza.Durum;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="/Arizalar" class="btn btn-sm btn-outline-secondary mb-2">
+            <i class="bi bi-arrow-left me-1"></i> Listeye Dön
+        </a>
+        <h4 class="mb-0 fw-bold">
+            <i class="bi bi-tools me-2 text-primary"></i>Arıza Detayı
+        </h4>
+    </div>
+    <span class="badge badge-durum durum-@Model.Ariza.Durum.ToLower() fs-6 px-3 py-2">
+        @Model.Ariza.Durum
+    </span>
+</div>
+
+<div class="row g-3">
+    <!-- Sol kolon: Bilgiler + Fotoğraflar -->
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold">@Model.Ariza.Baslik</h6>
+                <span class="badge badge-durum oncelik-@Model.Ariza.Oncelik.ToLower()">
+                    @Model.Ariza.Oncelik
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="text-muted-sm fw-semibold mb-1">Bildiren Sakin</div>
+                        <div>@(Model.Ariza.BildirenAdSoyad ?? "—")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted-sm fw-semibold mb-1">Daire No</div>
+                        <div>@(Model.Ariza.BildirenDaireNo ?? "—")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted-sm fw-semibold mb-1">Bildirim Tarihi</div>
+                        <div>@Model.Ariza.Tarih.ToString("dd MMMM yyyy, HH:mm", new System.Globalization.CultureInfo("tr-TR"))</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="text-muted-sm fw-semibold mb-1">Güncel Durum</div>
+                        <span class="badge badge-durum durum-@arDurum.ToLower()">@arDurum</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Ariza.Aciklama))
+                    {
+                        <div class="col-12">
+                            <div class="text-muted-sm fw-semibold mb-1">Açıklama</div>
+                            <div class="p-3 bg-light rounded">@Model.Ariza.Aciklama</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="col-12">
+                            <div class="text-muted-sm fw-semibold mb-1">Açıklama</div>
+                            <span class="text-muted fst-italic">Açıklama girilmemiş.</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Fotoğraflar -->
+        @if (Model.Fotograflar.Any())
+        {
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="bi bi-images me-2 text-primary"></i>
+                        Fotoğraflar <span class="badge bg-secondary ms-1">@Model.Fotograflar.Count</span>
+                    </h6>
+                </div>
+                <div class="card-body d-flex flex-wrap gap-3">
+                    @foreach (var foto in Model.Fotograflar)
+                    {
+                        <a href="@foto.Url" target="_blank" title="Büyük görüntüle">
+                            <img src="@foto.Url" class="foto-thumb" alt="Arıza fotoğrafı" />
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-body">
+                    <div class="empty-state py-3">
+                        <i class="bi bi-image text-muted" style="font-size:1.8rem;"></i>
+                        <p class="mt-2 mb-0 text-muted small">Bu arıza için fotoğraf eklenmemiş.</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Sağ kolon: Durum güncelleme + Silme -->
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="bi bi-arrow-repeat me-2 text-primary"></i>Durumu Güncelle
+                </h6>
+            </div>
+            <div class="card-body">
+                <label class="form-label">Yeni Durum</label>
+                <select id="durumSelect" class="form-select mb-3">
+                    <option value="Beklemede" selected="@(arDurum == "Beklemede" ? "selected" : null)">⏳ Beklemede</option>
+                    <option value="Inceleniyor" selected="@(arDurum == "Inceleniyor" ? "selected" : null)">🔍 İnceleniyor</option>
+                    <option value="Tamamlandi" selected="@(arDurum == "Tamamlandi" ? "selected" : null)">✅ Tamamlandı</option>
+                    <option value="Reddedildi" selected="@(arDurum == "Reddedildi" ? "selected" : null)">❌ Reddedildi</option>
+                </select>
+                <button class="btn btn-primary w-100" id="durumGuncelleBtn" onclick="updateStatus()">
+                    <i class="bi bi-check-lg me-1"></i> Güncelle
+                </button>
+                <div id="durumMsg" class="mt-2 d-none"></div>
+            </div>
+        </div>
+
+        <div class="card border-danger">
+            <div class="card-body">
+                <div class="text-muted-sm mb-2">Bu arıza kaydını kalıcı olarak silmek için aşağıdaki butona tıklayın.</div>
+                <button class="btn btn-outline-danger w-100" onclick="deleteAriza()">
+                    <i class="bi bi-trash me-1"></i> Arızayı Sil
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function updateStatus() {
+    const status = document.getElementById('durumSelect').value;
+    const btn = document.getElementById('durumGuncelleBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Güncelleniyor...';
+
+    fetch('/Arizalar/DurumGuncelle?id=@Model.Ariza.Id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ durum: status })
+    }).then(r => r.json()).then(res => {
+        const el = document.getElementById('durumMsg');
+        el.classList.remove('d-none');
+        if (res.success) {
+            el.className = 'mt-2 alert alert-success py-2 small';
+            el.textContent = 'Durum başarıyla güncellendi.';
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            el.className = 'mt-2 alert alert-danger py-2 small';
+            el.textContent = res.message;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Güncelle';
+        }
+    });
+}
+
+function deleteAriza() {
+    confirmDialog('"@Model.Ariza.Baslik" arızasını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.', () => {
+        fetch('/Arizalar/Sil?id=@Model.Ariza.Id', { method: 'DELETE' })
+        .then(r => r.json()).then(res => {
+            if (res.success) { toast('Arıza silindi.', 'success'); setTimeout(() => window.location = '/Arizalar', 800); }
+            else toast(res.message, 'danger');
+        });
+    });
+}
+</script>
+}

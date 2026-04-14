@@ -1,0 +1,251 @@
+@model List<BildirimDto>
+@{
+    ViewData["Title"] = "Bildirimler";
+    var okunmamisSayi = Model.Count(b => !b.Okundu);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0 fw-bold">
+            <i class="bi bi-bell me-2 text-primary"></i>Bildirimler
+            @if (okunmamisSayi > 0)
+            {
+                <span class="badge bg-danger ms-1">@okunmamisSayi yeni</span>
+            }
+        </h4>
+        <small class="text-muted">Adminlere iletilen sistem bildirimleri</small>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#duyuruModal">
+            <i class="bi bi-megaphone me-1"></i> Genel Duyuru
+        </button>
+        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#daireBildirimModal">
+            <i class="bi bi-house-door me-1"></i> Daireye Bildirim
+        </button>
+    </div>
+</div>
+
+<!-- Bildirim Listesi -->
+<div class="card">
+    <div class="card-body p-0">
+        @if (Model.Any())
+        {
+            <div class="list-group list-group-flush" id="bildirimListesi">
+                @foreach (var b in Model.OrderByDescending(x => x.GonderimTarihi))
+                {
+                    <div class="list-group-item @(!b.Okundu ? "notification-unread" : "")" id="bildirim-@b.Id">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="flex-shrink-0 mt-1">
+                                @if (b.Tip == "YeniAriza")
+                                {
+                                    <span class="badge bg-warning text-dark p-2"><i class="bi bi-tools"></i></span>
+                                }
+                                else if (b.Tip == "Duyuru")
+                                {
+                                    <span class="badge bg-primary p-2"><i class="bi bi-megaphone"></i></span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary p-2"><i class="bi bi-bell"></i></span>
+                                }
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <h6 class="mb-0 fw-semibold @(!b.Okundu ? "text-dark" : "text-secondary")">
+                                        @if (!b.Okundu)
+                                        {
+                                            <span class="badge bg-primary me-1 fw-normal" style="font-size:0.7rem;">YENİ</span>
+                                        }
+                                        @b.Baslik
+                                    </h6>
+                                    <small class="text-muted ms-2 flex-shrink-0">
+                                        @b.GonderimTarihi.ToString("dd.MM.yyyy HH:mm")
+                                    </small>
+                                </div>
+                                <p class="mb-0 small text-muted text-truncate">@b.Icerik</p>
+                            </div>
+                            @if (!b.Okundu)
+                            {
+                                <div class="flex-shrink-0">
+                                    <button class="btn btn-sm btn-outline-success" title="Okundu olarak işaretle"
+                                            onclick="markAsRead(@b.Id)">
+                                        <i class="bi bi-check2"></i>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="bi bi-bell-slash"></i>
+                <p>Henüz bildirim bulunmuyor.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Genel Duyuru Modal -->
+<div class="modal fade" id="duyuruModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-megaphone me-2 text-primary"></i>Genel Duyuru Gönder
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2 small mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Bu duyuru tüm sakinlere anlık bildirim olarak gönderilecektir.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Başlık <span class="zorunlu">*</span></label>
+                    <input type="text" id="duyuruBaslik" class="form-control" placeholder="Duyuru başlığı..." maxlength="100">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">İçerik <span class="zorunlu">*</span></label>
+                    <textarea id="duyuruIcerik" class="form-control" rows="4"
+                              placeholder="Duyuru metni buraya yazılır..." maxlength="500"></textarea>
+                </div>
+                <div id="duyuruHata" class="alert alert-danger d-none py-2 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="duyuruGonderBtn" onclick="sendAnnouncement()">
+                    <i class="bi bi-send me-1"></i> Tüm Sakinlere Gönder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daireye Bildirim Modal -->
+<div class="modal fade" id="daireBildirimModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-house-door me-2 text-primary"></i>Daireye Bildirim Gönder
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Daire No <span class="zorunlu">*</span></label>
+                    <input type="text" id="daireBildirimDaireNo" class="form-control"
+                           placeholder="Örn: A1, 3B, 15...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Başlık <span class="zorunlu">*</span></label>
+                    <input type="text" id="daireBildirimBaslik" class="form-control" placeholder="Bildirim başlığı..." maxlength="100">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">İçerik <span class="zorunlu">*</span></label>
+                    <textarea id="daireBildirimIcerik" class="form-control" rows="4"
+                              placeholder="Bildirim metni..." maxlength="500"></textarea>
+                </div>
+                <div id="daireBildirimHata" class="alert alert-danger d-none py-2 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="daireGonderBtn" onclick="sendApartmentNotif()">
+                    <i class="bi bi-send me-1"></i> Gönder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function markAsRead(id) {
+    fetch('/Bildirimler/OkunduIsaretle?id=' + id, { method: 'POST' })
+    .then(r => r.json()).then(res => {
+        if (res.success) {
+            const el = document.getElementById('bildirim-' + id);
+            if (el) {
+                el.classList.remove('notification-unread');
+                el.querySelector('.badge.bg-primary[style]')?.remove();
+                el.querySelector('button[onclick]')?.remove();
+            }
+            const badge = document.querySelector('.badge.bg-danger');
+            if (badge) {
+                const count = parseInt(badge.textContent) - 1;
+                if (count <= 0) badge.remove();
+                else badge.textContent = count + ' yeni';
+            }
+        } else toast(res.message, 'danger');
+    });
+}
+
+function sendAnnouncement() {
+    const title = document.getElementById('duyuruBaslik').value.trim();
+    const content = document.getElementById('duyuruIcerik').value.trim();
+    if (!title || !content) { showError('duyuruHata', 'Başlık ve içerik zorunludur.'); return; }
+
+    setLoading('duyuruGonderBtn', 'Gönderiliyor...', true);
+    fetch('/Bildirimler/Duyuru', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baslik: title, icerik: content })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('duyuruModal')).hide();
+            toast('Duyuru tüm sakinlere gönderildi.', 'success');
+        } else {
+            showError('duyuruHata', res.message || 'Gönderim başarısız.');
+            setLoading('duyuruGonderBtn', 'Tüm Sakinlere Gönder', false, 'bi-send');
+        }
+    });
+}
+
+function sendApartmentNotif() {
+    const aptNo = document.getElementById('daireBildirimDaireNo').value.trim();
+    const title = document.getElementById('daireBildirimBaslik').value.trim();
+    const content = document.getElementById('daireBildirimIcerik').value.trim();
+    if (!aptNo || !title || !content) { showError('daireBildirimHata', 'Tüm alanlar zorunludur.'); return; }
+
+    setLoading('daireGonderBtn', 'Gönderiliyor...', true);
+    fetch('/Bildirimler/DaireBildirim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ daireNo: aptNo, baslik: title, icerik: content })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('daireBildirimModal')).hide();
+            toast(`Daire ${aptNo}'e bildirim gönderildi.`, 'success');
+        } else {
+            showError('daireBildirimHata', res.message || 'Gönderim başarısız.');
+            setLoading('daireGonderBtn', 'Gönder', false, 'bi-send');
+        }
+    });
+}
+
+function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.remove('d-none');
+}
+
+function setLoading(btnId, label, loading, icon = '') {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.innerHTML = loading
+        ? `<span class="spinner-border spinner-border-sm me-1"></span> ${label}`
+        : `<i class="bi ${icon} me-1"></i> ${label}`;
+}
+
+// Reset modals on close
+['duyuruModal', 'daireBildirimModal'].forEach(id => {
+    document.getElementById(id)?.addEventListener('hidden.bs.modal', () => {
+        document.querySelectorAll(`#${id} input, #${id} textarea`).forEach(el => el.value = '');
+        document.querySelectorAll(`#${id} .alert`).forEach(el => el.classList.add('d-none'));
+    });
+});
+</script>
+}

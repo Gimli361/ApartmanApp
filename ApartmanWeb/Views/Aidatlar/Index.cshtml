@@ -1,0 +1,375 @@
+@model AidatViewModel
+@{
+    ViewData["Title"] = "Aidat Yönetimi";
+    var bekleyen = Model.Aidatlar.Count(a => a.OdemeDurumu != "Odendi");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0 fw-bold"><i class="bi bi-cash-coin me-2 text-primary"></i>Aidat Yönetimi</h4>
+        @if (bekleyen > 0)
+        {
+            <small class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>@bekleyen adet ödenmemiş kayıt var.</small>
+        }
+    </div>
+</div>
+
+<!-- Sekmeler -->
+<ul class="nav nav-tabs mb-0" id="aidatTabs">
+    <li class="nav-item">
+        <button class="nav-link active fw-medium" data-bs-toggle="tab" data-bs-target="#aidatlarTab">
+            <i class="bi bi-list-ul me-1"></i>Aidatlar
+            <span class="badge bg-secondary ms-1">@Model.Aidatlar.Count</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link fw-medium" data-bs-toggle="tab" data-bs-target="#otomatikTab">
+            <i class="bi bi-arrow-repeat me-1"></i>Otomatik Aidat
+            <span class="badge bg-secondary ms-1">@Model.OtomatikAidatlar.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- Aidatlar Sekmesi -->
+    <div class="tab-pane fade show active" id="aidatlarTab">
+        <div class="card" style="border-radius:0 12px 12px 12px;">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="text-muted-sm">Tüm aidat kayıtları</span>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#aidatEkleModal">
+                    <i class="bi bi-plus-lg me-1"></i> Aidat Ekle
+                </button>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Aidatlar.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Sakin</th>
+                                    <th>Daire</th>
+                                    <th>Dönem</th>
+                                    <th>Tutar</th>
+                                    <th>Ödeme Durumu</th>
+                                    <th style="width:60px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in Model.Aidatlar.OrderByDescending(x => x.Yil).ThenByDescending(x => x.Ay))
+                                {
+                                    <tr>
+                                        <td class="fw-medium">@a.KullaniciAdSoyad</td>
+                                        <td>@a.DaireNo</td>
+                                        <td>@a.Ay.ToString("00")/@a.Yil</td>
+                                        <td class="fw-semibold">@a.Tutar.ToString("N2") ₺</td>
+                                        <td>
+                                            @{ var odDurum = a.OdemeDurumu; }
+                                            <select class="form-select form-select-sm" style="width:140px;"
+                                                    onchange="updatePaymentStatus(@a.Id, this.value)">
+                                                <option value="Beklemede" selected="@(odDurum == "Beklemede" ? "selected" : null)">⏳ Beklemede</option>
+                                                <option value="Odendi" selected="@(odDurum == "Odendi" ? "selected" : null)">✅ Ödendi</option>
+                                                <option value="Gecikti" selected="@(odDurum == "Gecikti" ? "selected" : null)">⚠️ Gecikmiş</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" title="Sil"
+                                                    onclick="deleteDues(@a.Id, '@a.KullaniciAdSoyad', '@a.Ay.ToString("00")/@a.Yil')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-cash-coin"></i>
+                        <p>Henüz aidat kaydı bulunmuyor.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Otomatik Aidat Sekmesi -->
+    <div class="tab-pane fade" id="otomatikTab">
+        <div class="card" style="border-radius:0 12px 12px 12px;">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="text-muted-sm">Otomatik oluşturulacak aidatlar</span>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-success" onclick="generateThisMonth()">
+                        <i class="bi bi-calendar-check me-1"></i> Bu Ayı Oluştur
+                    </button>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#otomatikEkleModal">
+                        <i class="bi bi-plus-lg me-1"></i> Kural Ekle
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.OtomatikAidatlar.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Sakin</th>
+                                    <th>Daire</th>
+                                    <th>Aylık Tutar</th>
+                                    <th>Durum</th>
+                                    <th style="width:60px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var o in Model.OtomatikAidatlar)
+                                {
+                                    <tr>
+                                        <td class="fw-medium">@o.KullaniciAdSoyad</td>
+                                        <td>@o.DaireNo</td>
+                                        <td class="fw-semibold">@o.Tutar.ToString("N2") ₺</td>
+                                        <td>
+                                            <span class="badge @(o.AktifMi ? "bg-success" : "bg-secondary") cursor-pointer"
+                                                  onclick="toggleAutoDues(@o.Id)"
+                                                  title="@(o.AktifMi ? "Pasife almak için tıklayın" : "Aktive etmek için tıklayın")">
+                                                @(o.AktifMi ? "✓ Aktif" : "Pasif")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" title="Kuralı sil"
+                                                    onclick="deleteAutoDues(@o.Id, '@o.KullaniciAdSoyad')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-arrow-repeat"></i>
+                        <p>Henüz otomatik aidat kuralı tanımlanmamış.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Aidat Ekle Modal -->
+<div class="modal fade" id="aidatEkleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cash-coin me-2 text-primary"></i>Aidat Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Sakin <span class="zorunlu">*</span></label>
+                    <select id="aidatKullanici" class="form-select">
+                        @foreach (var k in Model.Kullanicilar)
+                        {
+                            <option value="@k.Id">@k.AdSoyad — Daire @k.DaireNo</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tutar <span class="zorunlu">*</span></label>
+                    <div class="input-group">
+                        <input type="number" id="aidatTutar" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        <span class="input-group-text">₺</span>
+                    </div>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label">Ay <span class="zorunlu">*</span></label>
+                        <select id="aidatAy" class="form-select">
+                            @{ var aylar = new[]{"Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"}; }
+                            @for (int i = 1; i <= 12; i++)
+                            {
+                                <option value="@i" selected="@(i == DateTime.Now.Month ? "selected" : null)">@i — @aylar[i-1]</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Yıl <span class="zorunlu">*</span></label>
+                        <input type="number" id="aidatYil" class="form-control" value="@DateTime.Now.Year" min="2020" max="2099">
+                    </div>
+                </div>
+                <div id="aidatEkleHata" class="alert alert-danger d-none mt-3 py-2 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="aidatKaydetBtn" onclick="ekleAidat()">
+                    <i class="bi bi-check-lg me-1"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Otomatik Aidat Kural Ekle Modal -->
+<div class="modal fade" id="otomatikEkleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-arrow-repeat me-2 text-primary"></i>Otomatik Aidat Kuralı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Bu kural etkin olduğu sürece seçilen sakine her ay otomatik aidat kaydı oluşturulur.</p>
+                <div class="mb-3">
+                    <label class="form-label">Sakin <span class="zorunlu">*</span></label>
+                    <select id="otomatikKullanici" class="form-select">
+                        @foreach (var k in Model.Kullanicilar)
+                        {
+                            <option value="@k.Id">@k.AdSoyad — Daire @k.DaireNo</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Aylık Tutar <span class="zorunlu">*</span></label>
+                    <div class="input-group">
+                        <input type="number" id="otomatikTutar" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        <span class="input-group-text">₺</span>
+                    </div>
+                </div>
+                <div id="otomatikEkleHata" class="alert alert-danger d-none py-2 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="otomatikKaydetBtn" onclick="ekleOtomatik()">
+                    <i class="bi bi-check-lg me-1"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function updatePaymentStatus(id, status) {
+    fetch('/Aidatlar/DurumGuncelle?id=' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ odemeDurumu: status })
+    }).then(r => r.json()).then(res => {
+        if (res.success) toast('Ödeme durumu güncellendi.', 'success');
+        else toast(res.message || 'Güncelleme başarısız.', 'danger');
+    });
+}
+
+function addDues() {
+    const amount = parseFloat(document.getElementById('aidatTutar').value);
+    if (!amount || amount <= 0) { showError('aidatEkleHata', 'Geçerli bir tutar giriniz.'); return; }
+
+    setLoading('aidatKaydetBtn', true);
+    fetch('/Aidatlar/Ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            kullaniciId: parseInt(document.getElementById('aidatKullanici').value),
+            tutar: amount,
+            ay: parseInt(document.getElementById('aidatAy').value),
+            yil: parseInt(document.getElementById('aidatYil').value)
+        })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('aidatEkleModal')).hide();
+            toast('Aidat kaydı oluşturuldu.', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showError('aidatEkleHata', res.message || 'Bir hata oluştu.');
+            setLoading('aidatKaydetBtn', false);
+        }
+    });
+}
+
+function deleteDues(id, resident, period) {
+    confirmDialog(`${resident} için ${period} dönemine ait aidat kaydını silmek istediğinize emin misiniz?`, () => {
+        fetch('/Aidatlar/Sil?id=' + id, { method: 'DELETE' })
+        .then(r => r.json()).then(res => {
+            if (res.success) { toast('Aidat kaydı silindi.', 'success'); setTimeout(() => location.reload(), 800); }
+            else toast(res.message, 'danger');
+        });
+    });
+}
+
+function addAutoDues() {
+    const amount = parseFloat(document.getElementById('otomatikTutar').value);
+    if (!amount || amount <= 0) { showError('otomatikEkleHata', 'Geçerli bir tutar giriniz.'); return; }
+
+    setLoading('otomatikKaydetBtn', true);
+    fetch('/Aidatlar/OtomatikEkle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            kullaniciId: parseInt(document.getElementById('otomatikKullanici').value),
+            tutar: amount,
+            aktifMi: true
+        })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('otomatikEkleModal')).hide();
+            toast('Otomatik aidat kuralı oluşturuldu.', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showError('otomatikEkleHata', res.message || 'Bir hata oluştu.');
+            setLoading('otomatikKaydetBtn', false);
+        }
+    });
+}
+
+function toggleAutoDues(id) {
+    fetch('/Aidatlar/OtomatikToggle?id=' + id, { method: 'POST' })
+    .then(r => r.json()).then(res => {
+        if (res.success) { toast('Durum değiştirildi.', 'success'); setTimeout(() => location.reload(), 600); }
+        else toast(res.message, 'danger');
+    });
+}
+
+function generateThisMonth() {
+    const now = new Date();
+    confirmDialog(`${now.getMonth() + 1}/${now.getFullYear()} dönemi için otomatik aidatlar oluşturulsun mu?`, () => {
+        fetch('/Aidatlar/BuAyiOlustur', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ay: now.getMonth() + 1, yil: now.getFullYear() })
+        }).then(r => r.json()).then(res => {
+            if (res.success) { toast('Bu aya ait aidatlar oluşturuldu.', 'success'); setTimeout(() => location.reload(), 800); }
+            else toast(res.message, 'danger');
+        });
+    }, 'Evet, Oluştur');
+}
+
+function deleteAutoDues(id, resident) {
+    confirmDialog(`${resident} için otomatik aidat kuralını kaldırmak istediğinize emin misiniz?`, () => {
+        fetch('/Aidatlar/OtomatikSil?id=' + id, { method: 'DELETE' })
+        .then(r => r.json()).then(res => {
+            if (res.success) { toast('Kural kaldırıldı.', 'success'); setTimeout(() => location.reload(), 800); }
+            else toast(res.message, 'danger');
+        });
+    });
+}
+
+function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.remove('d-none');
+}
+
+function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.innerHTML = loading
+        ? '<span class="spinner-border spinner-border-sm me-1"></span> Kaydediliyor...'
+        : '<i class="bi bi-check-lg me-1"></i> Kaydet';
+}
+</script>
+}

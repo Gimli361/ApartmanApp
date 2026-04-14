@@ -1,0 +1,36 @@
+# ── .NET / ASP.NET ──────────────────────────────────────────────────
+**/bin/
+**/obj/
+*.user
+*.suo
+.vs/
+*.DotSettings.user
+appsettings.Development.json
+
+# Firebase Admin SDK (hassas credential — asla commit'leme)
+**/*firebase-adminsdk*.json
+**/firebase*.json
+
+# ── Flutter / Dart ───────────────────────────────────────────────────
+**/.dart_tool/
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/build/
+**/coverage/
+**/doc/api/
+**/*.iml
+**/ios/Flutter/.last_build_id
+
+# ── IDE ──────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# ── OS ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.log

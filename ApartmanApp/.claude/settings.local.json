@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter create:*)",
+      "Bash(flutter pub:*)",
+      "Bash(mkdir:*)",
+      "Bash(dart analyze:*)"
+    ]
+  }
+}
