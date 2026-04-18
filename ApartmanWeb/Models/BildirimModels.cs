@@ -20,8 +20,19 @@ public class DuyuruRequest
     public string Icerik { get; set; } = string.Empty;
 }
 
+public class BlokBildirimRequest
+{
+    [Required(ErrorMessage = "Blok No zorunludur")]
+    public string BlokNo { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Baslik zorunludur")]
+    public string Baslik { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Icerik zorunludur")]
+    public string Icerik { get; set; } = string.Empty;
+}
+
 public class DaireBildirimRequest
 {
+    public string? BlokNo { get; set; }
     [Required(ErrorMessage = "Daire No zorunludur")]
     public string DaireNo { get; set; } = string.Empty;
     [Required(ErrorMessage = "Baslik zorunludur")]

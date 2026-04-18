@@ -103,42 +103,51 @@ public class OtomatikAidatService(AppDbContext db, ILogger<OtomatikAidatService>
 
     public async Task<int> UretAylikAidatlarAsync(int ay, int yil)
     {
-        var aktifler = await db.OtomatikAidatlar
-            .Where(o => o.AktifMi)
-            .ToListAsync();
-
-        int uretilen = 0;
-
-        foreach (var kayit in aktifler)
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        try
         {
-            // Bu ay/yıl için zaten aidat var mı?
-            var varMi = await db.Aidatlar.AnyAsync(a =>
-                a.KullaniciId == kayit.KullaniciId &&
-                a.Ay == ay && a.Yil == yil);
+            var aktifler = await db.OtomatikAidatlar
+                .Where(o => o.AktifMi)
+                .ToListAsync();
 
-            if (varMi) continue;
+            int uretilen = 0;
 
-            db.Aidatlar.Add(new Aidat
+            foreach (var kayit in aktifler)
             {
-                KullaniciId = kayit.KullaniciId,
-                Tutar = kayit.Tutar,
-                Ay = ay,
-                Yil = yil,
-                OdemeDurumu = OdemeDurumu.Beklemede,
-            });
+                var varMi = await db.Aidatlar.AnyAsync(a =>
+                    a.KullaniciId == kayit.KullaniciId &&
+                    a.Ay == ay && a.Yil == yil);
 
-            kayit.SonUretimAy = ay;
-            kayit.SonUretimYil = yil;
-            uretilen++;
+                if (varMi) continue;
+
+                db.Aidatlar.Add(new Aidat
+                {
+                    KullaniciId = kayit.KullaniciId,
+                    Tutar = kayit.Tutar,
+                    Ay = ay,
+                    Yil = yil,
+                    OdemeDurumu = OdemeDurumu.Beklemede,
+                });
+
+                kayit.SonUretimAy = ay;
+                kayit.SonUretimYil = yil;
+                uretilen++;
+            }
+
+            if (uretilen > 0)
+            {
+                await db.SaveChangesAsync();
+                logger.LogInformation("{Ay}/{Yil} için {Sayi} otomatik aidat oluşturuldu.", ay, yil, uretilen);
+            }
+
+            await transaction.CommitAsync();
+            return uretilen;
         }
-
-        if (uretilen > 0)
+        catch
         {
-            await db.SaveChangesAsync();
-            logger.LogInformation("{Ay}/{Yil} için {Sayi} otomatik aidat oluşturuldu.", ay, yil, uretilen);
+            await transaction.RollbackAsync();
+            throw;
         }
-
-        return uretilen;
     }
 
     private static OtomatikAidatDto ToDto(OtomatikAidat o) => new()

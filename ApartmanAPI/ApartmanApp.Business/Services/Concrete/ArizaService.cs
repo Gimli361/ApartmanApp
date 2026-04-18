@@ -57,7 +57,7 @@ public class ArizaService(AppDbContext db, IMapper mapper, IBildirimService bild
 
         var ariza = mapper.Map<Ariza>(dto);
         ariza.Tarih = DateTime.UtcNow;
-        ariza.BlokNo = bildiren.BlokNo;
+        ariza.BlokNo = dto.OrtakAlan ? null : bildiren.BlokNo;
 
         db.Arizalar.Add(ariza);
         await db.SaveChangesAsync();

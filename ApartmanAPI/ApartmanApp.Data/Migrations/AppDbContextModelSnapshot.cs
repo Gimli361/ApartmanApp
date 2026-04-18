@@ -200,6 +200,45 @@ namespace ApartmanApp.Data.Migrations
                     b.ToTable("Bildirimler");
                 });
 
+            modelBuilder.Entity("ApartmanApp.Core.Entities.Blok", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Bloklar");
+                });
+
+            modelBuilder.Entity("ApartmanApp.Core.Entities.Daire", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BlokId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DaireNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlokId");
+
+                    b.ToTable("Daireler");
+                });
+
             modelBuilder.Entity("ApartmanApp.Core.Entities.Kullanici", b =>
                 {
                     b.Property<int>("Id")
@@ -281,6 +320,97 @@ namespace ApartmanApp.Data.Migrations
                     b.ToTable("OtomatikAidatlar");
                 });
 
+            modelBuilder.Entity("ApartmanApp.Core.Entities.Oylama", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("AktifMi")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("BaslangicTarihi")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Baslik")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("BitisTarihi")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OlusturanId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OlusturanId");
+
+                    b.ToTable("Oylamalar", (string)null);
+                });
+
+            modelBuilder.Entity("ApartmanApp.Core.Entities.OylamaOyu", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("KullaniciId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("OyTarihi")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OylamaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SecenekId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KullaniciId");
+
+                    b.HasIndex("SecenekId");
+
+                    b.HasIndex("OylamaId", "KullaniciId")
+                        .IsUnique();
+
+                    b.ToTable("OylamaOylari", (string)null);
+                });
+
+            modelBuilder.Entity("ApartmanApp.Core.Entities.OylamaSecenek", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Metin")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("OylamaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OylamaId");
+
+                    b.ToTable("OylamaSecenekler", (string)null);
+                });
+
             modelBuilder.Entity("ApartmanApp.Core.Entities.Aidat", b =>
                 {
                     b.HasOne("ApartmanApp.Core.Entities.Kullanici", "Kullanici")
@@ -343,6 +473,17 @@ namespace ApartmanApp.Data.Migrations
                     b.Navigation("Alici");
                 });
 
+            modelBuilder.Entity("ApartmanApp.Core.Entities.Daire", b =>
+                {
+                    b.HasOne("ApartmanApp.Core.Entities.Blok", "Blok")
+                        .WithMany("Daireler")
+                        .HasForeignKey("BlokId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Blok");
+                });
+
             modelBuilder.Entity("ApartmanApp.Core.Entities.OtomatikAidat", b =>
                 {
                     b.HasOne("ApartmanApp.Core.Entities.Kullanici", "Kullanici")
@@ -354,6 +495,55 @@ namespace ApartmanApp.Data.Migrations
                     b.Navigation("Kullanici");
                 });
 
+            modelBuilder.Entity("ApartmanApp.Core.Entities.Oylama", b =>
+                {
+                    b.HasOne("ApartmanApp.Core.Entities.Kullanici", "Olusturan")
+                        .WithMany()
+                        .HasForeignKey("OlusturanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Olusturan");
+                });
+
+            modelBuilder.Entity("ApartmanApp.Core.Entities.OylamaOyu", b =>
+                {
+                    b.HasOne("ApartmanApp.Core.Entities.Kullanici", "Kullanici")
+                        .WithMany()
+                        .HasForeignKey("KullaniciId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ApartmanApp.Core.Entities.Oylama", "Oylama")
+                        .WithMany("Oylar")
+                        .HasForeignKey("OylamaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ApartmanApp.Core.Entities.OylamaSecenek", "Secenek")
+                        .WithMany("Oylar")
+                        .HasForeignKey("SecenekId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Kullanici");
+
+                    b.Navigation("Oylama");
+
+                    b.Navigation("Secenek");
+                });
+
+            modelBuilder.Entity("ApartmanApp.Core.Entities.OylamaSecenek", b =>
+                {
+                    b.HasOne("ApartmanApp.Core.Entities.Oylama", "Oylama")
+                        .WithMany("Secenekler")
+                        .HasForeignKey("OylamaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Oylama");
+                });
+
             modelBuilder.Entity("ApartmanApp.Core.Entities.Ariza", b =>
                 {
                     b.Navigation("Fotograflar");
@@ -361,11 +551,28 @@ namespace ApartmanApp.Data.Migrations
                     b.Navigation("Takipler");
                 });
 
+            modelBuilder.Entity("ApartmanApp.Core.Entities.Blok", b =>
+                {
+                    b.Navigation("Daireler");
+                });
+
             modelBuilder.Entity("ApartmanApp.Core.Entities.Kullanici", b =>
                 {
                     b.Navigation("Arizalar");
 
                     b.Navigation("Takipler");
+                });
+
+            modelBuilder.Entity("ApartmanApp.Core.Entities.Oylama", b =>
+                {
+                    b.Navigation("Oylar");
+
+                    b.Navigation("Secenekler");
+                });
+
+            modelBuilder.Entity("ApartmanApp.Core.Entities.OylamaSecenek", b =>
+                {
+                    b.Navigation("Oylar");
                 });
 #pragma warning restore 612, 618
         }

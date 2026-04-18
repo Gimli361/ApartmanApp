@@ -20,6 +20,7 @@ class _ArizaCreateScreenState extends ConsumerState<ArizaCreateScreen> {
   final _baslikCtrl = TextEditingController();
   final _aciklamaCtrl = TextEditingController();
   ArizaOncelik _oncelik = ArizaOncelik.orta;
+  bool _ortakAlan = false;
   File? _foto;
   bool _isSubmitting = false;
 
@@ -80,6 +81,7 @@ class _ArizaCreateScreenState extends ConsumerState<ArizaCreateScreen> {
               aciklama: _aciklamaCtrl.text.trim(),
               oncelik: _oncelik,
               bildirenId: user.id,
+              ortakAlan: _ortakAlan,
               foto: _foto,
             );
 
@@ -155,6 +157,15 @@ class _ArizaCreateScreenState extends ConsumerState<ArizaCreateScreen> {
                 validator: (v) => v == null || v.trim().isEmpty
                     ? 'Açıklama boş olamaz.'
                     : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Konum seçimi: Bloğum / Ortak Alan
+              Text('Konum', style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 8),
+              _KonumSecici(
+                ortakAlan: _ortakAlan,
+                onChanged: (val) => setState(() => _ortakAlan = val),
               ),
               const SizedBox(height: 16),
 
@@ -245,6 +256,106 @@ class _ArizaCreateScreenState extends ConsumerState<ArizaCreateScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Konum seçici: Bloğum / Ortak Alan ───────────────────────────────────────
+
+class _KonumSecici extends StatelessWidget {
+  final bool ortakAlan;
+  final ValueChanged<bool> onChanged;
+
+  const _KonumSecici({required this.ortakAlan, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Expanded(
+          child: _KonumTile(
+            icon: Icons.apartment,
+            label: 'Bloğum',
+            subtitle: 'Dairemi veya bloğumu etkiliyor',
+            selected: !ortakAlan,
+            onTap: () => onChanged(false),
+            color: scheme.primary,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _KonumTile(
+            icon: Icons.location_city,
+            label: 'Ortak Alan',
+            subtitle: 'Havuz, otopark, bahçe vb.',
+            selected: ortakAlan,
+            onTap: () => onChanged(true),
+            color: scheme.secondary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _KonumTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _KonumTile({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? color : Colors.grey[300]!,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: selected ? color : Colors.grey),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: selected ? color : Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+            ),
+          ],
         ),
       ),
     );

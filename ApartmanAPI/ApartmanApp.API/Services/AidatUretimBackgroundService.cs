@@ -15,16 +15,17 @@ public class AidatUretimBackgroundService(
         // Uygulama ayağa kalktığında hemen bir kez çalıştır
         await UretAsync(stoppingToken);
 
-        // Sonrasında her gece 02:00'de tekrar çalış
+        // Sonrasında her gece 02:00 UTC'de tekrar çalış
         while (!stoppingToken.IsCancellationRequested)
         {
-            var now = DateTime.Now;
-            var nextRun = DateTime.Today.AddDays(1).AddHours(2); // yarın 02:00
+            var now = DateTime.UtcNow;
+            var nextRun = new DateTime(now.Year, now.Month, now.Day, 2, 0, 0, DateTimeKind.Utc)
+                .AddDays(1);
             var delay = nextRun - now;
             if (delay <= TimeSpan.Zero)
                 delay = TimeSpan.FromHours(24);
 
-            logger.LogInformation("Bir sonraki otomatik aidat üretimi: {NextRun}", nextRun);
+            logger.LogInformation("Bir sonraki otomatik aidat üretimi: {NextRun} UTC", nextRun);
 
             await Task.Delay(delay, stoppingToken);
             await UretAsync(stoppingToken);
@@ -38,7 +39,7 @@ public class AidatUretimBackgroundService(
             using var scope = scopeFactory.CreateScope();
             var service = scope.ServiceProvider.GetRequiredService<IOtomatikAidatService>();
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var uretilen = await service.UretAylikAidatlarAsync(now.Month, now.Year);
 
             if (uretilen > 0)

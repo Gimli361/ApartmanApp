@@ -1,0 +1,15 @@
+{
+  "ConnectionStrings": {
+    "Default": "Host=PROD_HOST;Port=5432;Database=PROD_DB;Username=PROD_USER;Password=PROD_PASSWORD"
+  },
+  "Jwt": {
+    "Key": "EN_AZ_32_KARAKTER_GUCLU_RASTGELE_KEY_BURAYA",
+    "Issuer": "ApartmanAPI",
+    "Audience": "ApartmanApp",
+    "ExpiryMinutes": 1440
+  },
+  "AdminSeed": {
+    "Email": "admin@sirketniz.com",
+    "Sifre": "GucluBirSifre123!"
+  }
+}

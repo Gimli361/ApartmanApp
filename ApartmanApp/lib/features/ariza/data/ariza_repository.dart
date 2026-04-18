@@ -10,6 +10,7 @@ abstract class ArizaRepository {
     required String aciklama,
     required ArizaOncelik oncelik,
     required int bildirenId,
+    bool ortakAlan = false,
   });
   Future<Result<ArizaModel, AppError>> updateDurum(
     int id,

@@ -28,6 +28,14 @@ public class BildirimService(AppDbContext db, IFcmService fcm, IMapper mapper) :
             .CountAsync(b => b.AliciId == kullaniciId && !b.Okundu);
     }
 
+    public async Task<Result> MarkAllAsReadAsync(int kullaniciId)
+    {
+        await db.Bildirimler
+            .Where(b => b.AliciId == kullaniciId && !b.Okundu)
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.Okundu, true));
+        return Result.Ok("Tüm bildirimler okundu olarak işaretlendi.");
+    }
+
     public async Task<Result> MarkAsReadAsync(int bildirimId, int kullaniciId)
     {
         var bildirim = await db.Bildirimler
@@ -58,7 +66,7 @@ public class BildirimService(AppDbContext db, IFcmService fcm, IMapper mapper) :
         db.Bildirimler.Add(bildirim);
         await db.SaveChangesAsync();
 
-        await fcm.SendAsync(kullanici.FcmToken, baslik, icerik);
+        await fcm.SendAsync(kullanici.FcmToken, baslik, icerik, tip);
     }
 
     public async Task SendToAllSakinlerAsync(string baslik, string icerik)
@@ -81,15 +89,42 @@ public class BildirimService(AppDbContext db, IFcmService fcm, IMapper mapper) :
         await db.SaveChangesAsync();
 
         // FCM paralel gönder
-        var fcmTasks = sakinler.Select(s => fcm.SendAsync(s.FcmToken, baslik, icerik));
+        var fcmTasks = sakinler.Select(s => fcm.SendAsync(s.FcmToken, baslik, icerik, "Duyuru"));
         await Task.WhenAll(fcmTasks);
     }
 
-    public async Task SendToDaireAsync(string daireNo, string baslik, string icerik)
+    public async Task SendToBlokAsync(string blokNo, string baslik, string icerik)
     {
         var kullanicilar = await db.Kullanicilar
-            .Where(k => k.DaireNo == daireNo)
+            .Where(k => k.Rol == KullaniciRol.Sakin && k.BlokNo == blokNo)
             .ToListAsync();
+
+        if (kullanicilar.Count == 0) return;
+
+        var bildirimler = kullanicilar.Select(k => new Bildirim
+        {
+            AliciId = k.Id,
+            Baslik = baslik,
+            Icerik = icerik,
+            Tip = "BlokMesaj",
+            GonderimTarihi = DateTime.UtcNow,
+            Okundu = false,
+        }).ToList();
+
+        db.Bildirimler.AddRange(bildirimler);
+        await db.SaveChangesAsync();
+
+        var fcmTasks = kullanicilar.Select(k => fcm.SendAsync(k.FcmToken, baslik, icerik, "BlokMesaj"));
+        await Task.WhenAll(fcmTasks);
+    }
+
+    public async Task SendToDaireAsync(string daireNo, string baslik, string icerik, string? blokNo = null)
+    {
+        var query = db.Kullanicilar.Where(k => k.DaireNo == daireNo);
+        if (!string.IsNullOrWhiteSpace(blokNo))
+            query = query.Where(k => k.BlokNo == blokNo);
+
+        var kullanicilar = await query.ToListAsync();
 
         if (kullanicilar.Count == 0) return;
 
@@ -106,7 +141,7 @@ public class BildirimService(AppDbContext db, IFcmService fcm, IMapper mapper) :
         db.Bildirimler.AddRange(bildirimler);
         await db.SaveChangesAsync();
 
-        var fcmTasks = kullanicilar.Select(k => fcm.SendAsync(k.FcmToken, baslik, icerik));
+        var fcmTasks = kullanicilar.Select(k => fcm.SendAsync(k.FcmToken, baslik, icerik, "DaireMesaj"));
         await Task.WhenAll(fcmTasks);
     }
 
@@ -129,7 +164,7 @@ public class BildirimService(AppDbContext db, IFcmService fcm, IMapper mapper) :
         db.Bildirimler.AddRange(bildirimler);
         await db.SaveChangesAsync();
 
-        var fcmTasks = adminler.Select(a => fcm.SendAsync(a.FcmToken, baslik, icerik));
+        var fcmTasks = adminler.Select(a => fcm.SendAsync(a.FcmToken, baslik, icerik, tip));
         await Task.WhenAll(fcmTasks);
     }
 
@@ -155,7 +190,7 @@ public class BildirimService(AppDbContext db, IFcmService fcm, IMapper mapper) :
         db.Bildirimler.AddRange(bildirimler);
         await db.SaveChangesAsync();
 
-        var fcmTasks = takipler.Select(t => fcm.SendAsync(t.Kullanici!.FcmToken, baslik, icerik));
+        var fcmTasks = takipler.Select(t => fcm.SendAsync(t.Kullanici!.FcmToken, baslik, icerik, tip));
         await Task.WhenAll(fcmTasks);
     }
 }

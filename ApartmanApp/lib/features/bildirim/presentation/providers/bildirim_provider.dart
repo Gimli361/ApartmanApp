@@ -61,6 +61,40 @@ class BildirimNotifier extends StateNotifier<BildirimState> {
       );
     }
   }
+
+  Future<void> markAllAsRead() async {
+    final result = await _repo.markAllAsRead();
+    if (result is Success) {
+      state = state.copyWith(
+        bildirimler: state.bildirimler
+            .map((b) => b.copyWith(okundu: true))
+            .toList(),
+      );
+    }
+  }
+
+  Future<String?> sendDuyuru(String baslik, String icerik) async {
+    final result = await _repo.sendDuyuru(baslik, icerik);
+    if (result is Failure<void, AppError>) {
+      return result.error.message;
+    }
+    return null;
+  }
+
+  Future<String?> sendBlokBildirim(
+      String blokNo, String baslik, String icerik) async {
+    final result = await _repo.sendBlokBildirim(blokNo, baslik, icerik);
+    if (result is Failure<void, AppError>) return result.error.message;
+    return null;
+  }
+
+  Future<String?> sendDaireBildirim(
+      String daireNo, String baslik, String icerik, {String? blokNo}) async {
+    final result =
+        await _repo.sendDaireBildirim(daireNo, baslik, icerik, blokNo: blokNo);
+    if (result is Failure<void, AppError>) return result.error.message;
+    return null;
+  }
 }
 
 final bildirimProvider =

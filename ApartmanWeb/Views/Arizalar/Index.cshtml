@@ -1,6 +1,13 @@
 @model List<ArizaDto>
 @{
     ViewData["Title"] = "Arıza Yönetimi";
+    // Benzersiz blokları Razor tarafında hazırla
+    var bloklar = Model
+        .Where(a => !string.IsNullOrWhiteSpace(a.BlokNo))
+        .Select(a => a.BlokNo!)
+        .Distinct()
+        .OrderBy(b => b)
+        .ToList();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -12,22 +19,42 @@
 
 <!-- Filtreler -->
 <div class="card mb-3">
-    <div class="card-body py-2 d-flex gap-2 flex-wrap align-items-center">
-        <span class="text-muted small fw-semibold me-1">Durum:</span>
-        <button class="btn btn-sm btn-secondary active" onclick="filterByStatus(this, '')">Tümü</button>
-        <button class="btn btn-sm btn-outline-warning" onclick="filterByStatus(this, 'Beklemede')">
-            <i class="bi bi-hourglass-split me-1"></i>Beklemede
-        </button>
-        <button class="btn btn-sm btn-outline-primary" onclick="filterByStatus(this, 'Inceleniyor')">
-            <i class="bi bi-search me-1"></i>İnceleniyor
-        </button>
-        <button class="btn btn-sm btn-outline-success" onclick="filterByStatus(this, 'Tamamlandi')">
-            <i class="bi bi-check-circle me-1"></i>Tamamlandı
-        </button>
-        <button class="btn btn-sm btn-outline-danger" onclick="filterByStatus(this, 'Reddedildi')">
-            <i class="bi bi-x-circle me-1"></i>Reddedildi
-        </button>
-        <span class="ms-auto text-muted-sm" id="ariza-sayac">@Model.Count arıza</span>
+    <div class="card-body py-2">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+
+            <!-- Blok / Konum filtresi -->
+            <div class="d-flex align-items-center gap-2 me-3">
+                <span class="text-muted small fw-semibold text-nowrap">
+                    <i class="bi bi-building me-1"></i>Konum:
+                </span>
+                <select id="blokFilter" class="form-select form-select-sm" style="min-width:160px;" onchange="applyFilters()">
+                    <option value="">Tüm Konumlar</option>
+                    <option value="ortakalan">🏢 Ortak Alan</option>
+                    @foreach (var blok in bloklar)
+                    {
+                        <option value="@blok">🏠 @blok Blok</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Durum filtresi -->
+            <span class="text-muted small fw-semibold me-1">Durum:</span>
+            <button class="btn btn-sm btn-secondary active" onclick="filterByStatus(this, '')">Tümü</button>
+            <button class="btn btn-sm btn-outline-warning" onclick="filterByStatus(this, 'Beklemede')">
+                <i class="bi bi-hourglass-split me-1"></i>Beklemede
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="filterByStatus(this, 'Inceleniyor')">
+                <i class="bi bi-search me-1"></i>İnceleniyor
+            </button>
+            <button class="btn btn-sm btn-outline-success" onclick="filterByStatus(this, 'Tamamlandi')">
+                <i class="bi bi-check-circle me-1"></i>Tamamlandı
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="filterByStatus(this, 'Reddedildi')">
+                <i class="bi bi-x-circle me-1"></i>Reddedildi
+            </button>
+
+            <span class="ms-auto text-muted small" id="ariza-sayac">@Model.Count arıza</span>
+        </div>
     </div>
 </div>
 
@@ -41,6 +68,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>Başlık</th>
+                            <th>Konum</th>
                             <th>Daire</th>
                             <th>Öncelik</th>
                             <th>Durum</th>
@@ -51,9 +79,26 @@
                     <tbody>
                         @foreach (var a in Model.OrderByDescending(x => x.Tarih))
                         {
-                            <tr data-durum="@a.Durum" onclick="window.location='/Arizalar/Detay/@a.Id'">
+                            <tr data-durum="@a.Durum"
+                                data-blok="@(a.OrtakAlan ? "ortakalan" : a.BlokNo)"
+                                onclick="window.location='/Arizalar/Detay/@a.Id'"
+                                style="cursor:pointer;">
                                 <td class="fw-medium">@a.Baslik</td>
-                                <td>@a.BildirenDaireNo</td>
+                                <td>
+                                    @if (a.OrtakAlan)
+                                    {
+                                        <span class="badge bg-info text-dark">
+                                            <i class="bi bi-building me-1"></i>Ortak Alan
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-house me-1"></i>@a.BlokNo Blok
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-muted">@(a.BildirenDaireNo ?? "—")</td>
                                 <td><span class="badge badge-durum oncelik-@a.Oncelik.ToLower()">@a.Oncelik</span></td>
                                 <td><span class="badge badge-durum durum-@a.Durum.ToLower()">@a.Durum</span></td>
                                 <td class="text-muted small">@a.Tarih.ToString("dd.MM.yyyy HH:mm")</td>
@@ -106,6 +151,22 @@
                         <option value="Kritik">🔴 Kritik — Acil müdahale</option>
                     </select>
                 </div>
+                <!-- Konum seçimi -->
+                <div class="mb-3">
+                    <label class="form-label">Konum <span class="zorunlu">*</span></label>
+                    <select id="arizaKonum" class="form-select" onchange="toggleBlokSecim()">
+                        <option value="ortakalan">🏢 Ortak Alan</option>
+                        @foreach (var blok in bloklar)
+                        {
+                            <option value="@blok">🏠 @blok Blok</option>
+                        }
+                        <option value="diger">➕ Diğer blok gir...</option>
+                    </select>
+                </div>
+                <div class="mb-3 d-none" id="blokManuelDiv">
+                    <label class="form-label">Blok Adı <span class="zorunlu">*</span></label>
+                    <input type="text" id="arizaBlokManuel" class="form-control" placeholder="Örn: C, D, 3...">
+                </div>
                 <div id="arizaEkleHata" class="alert alert-danger d-none py-2"></div>
             </div>
             <div class="modal-footer">
@@ -120,25 +181,40 @@
 
 @section Scripts {
 <script>
+let activeStatus = '';
+
+function toggleBlokSecim() {
+    const val = document.getElementById('arizaKonum').value;
+    const div = document.getElementById('blokManuelDiv');
+    div.classList.toggle('d-none', val !== 'diger');
+}
+
 function filterByStatus(btn, status) {
+    activeStatus = status;
+    // Buton stillerini sıfırla
     document.querySelectorAll('[onclick^="filterByStatus"]').forEach(b => {
-        b.className = b.className.replace('btn-secondary', 'btn-outline-secondary')
-                                 .replace('btn-warning', 'btn-outline-warning')
-                                 .replace('btn-primary btn-sm', 'btn-outline-primary btn-sm')
-                                 .replace('btn-success btn-sm', 'btn-outline-success btn-sm')
-                                 .replace('btn-danger btn-sm', 'btn-outline-danger btn-sm');
-        b.classList.remove('active');
+        b.className = b.className
+            .replace(/\bbtn-(warning|primary|success|danger|secondary)\b/g, '')
+            .replace(/\bactive\b/g, '');
+        // outline ekle (zaten class'ta varsa sorun olmaz)
+        if (!b.className.includes('btn-outline-'))
+            b.className = b.className.replace('btn-sm', 'btn-sm btn-outline-secondary');
     });
     btn.classList.remove('btn-outline-secondary','btn-outline-warning','btn-outline-primary','btn-outline-success','btn-outline-danger');
-    btn.classList.add(status === '' ? 'btn-secondary' :
+    btn.classList.add('active', status === '' ? 'btn-secondary' :
         status === 'Beklemede' ? 'btn-warning' :
         status === 'Inceleniyor' ? 'btn-primary' :
         status === 'Tamamlandi' ? 'btn-success' : 'btn-danger');
-    btn.classList.add('active');
+    applyFilters();
+}
 
+function applyFilters() {
+    const blok = document.getElementById('blokFilter').value;
     let visible = 0;
     document.querySelectorAll('#arizaTable tbody tr').forEach(row => {
-        const show = !status || row.dataset.durum === status;
+        const statusMatch = !activeStatus || row.dataset.durum === activeStatus;
+        const blokMatch   = !blok || row.dataset.blok === blok;
+        const show = statusMatch && blokMatch;
         row.style.display = show ? '' : 'none';
         if (show) visible++;
     });
@@ -148,6 +224,14 @@ function filterByStatus(btn, status) {
 function reportFault() {
     const title = document.getElementById('arizaBaslik').value.trim();
     if (!title) { showError('arizaEkleHata', 'Başlık alanı zorunludur.'); return; }
+
+    const konum = document.getElementById('arizaKonum').value;
+    const ortakAlan = konum === 'ortakalan';
+
+    if (konum === 'diger') {
+        const manuel = document.getElementById('arizaBlokManuel').value.trim();
+        if (!manuel) { showError('arizaEkleHata', 'Blok adını giriniz.'); return; }
+    }
 
     const btn = document.getElementById('arizaKaydetBtn');
     btn.disabled = true;
@@ -159,22 +243,23 @@ function reportFault() {
         body: JSON.stringify({
             baslik: title,
             aciklama: document.getElementById('arizaAciklama').value.trim(),
-            oncelik: document.getElementById('arizaOncelik').value
+            oncelik: document.getElementById('arizaOncelik').value,
+            ortakAlan: ortakAlan
         })
     }).then(r => r.json()).then(res => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-1"></i> Bildir';
         if (res.success) {
             bootstrap.Modal.getInstance(document.getElementById('arizaEkleModal')).hide();
             toast('Arıza başarıyla bildirildi.', 'success');
             setTimeout(() => location.reload(), 1000);
         } else {
             showError('arizaEkleHata', res.message || 'Bir hata oluştu.');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-send me-1"></i> Bildir';
         }
     }).catch(() => {
-        showError('arizaEkleHata', 'Sunucuya bağlanılamadı.');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-send me-1"></i> Bildir';
+        showError('arizaEkleHata', 'Sunucuya bağlanılamadı.');
     });
 }
 
@@ -198,6 +283,9 @@ document.getElementById('arizaEkleModal').addEventListener('hidden.bs.modal', ()
     document.getElementById('arizaBaslik').value = '';
     document.getElementById('arizaAciklama').value = '';
     document.getElementById('arizaOncelik').value = 'Orta';
+    document.getElementById('arizaKonum').value = 'ortakalan';
+    document.getElementById('arizaBlokManuel').value = '';
+    document.getElementById('blokManuelDiv').classList.add('d-none');
     document.getElementById('arizaEkleHata').classList.add('d-none');
     const btn = document.getElementById('arizaKaydetBtn');
     btn.disabled = false;

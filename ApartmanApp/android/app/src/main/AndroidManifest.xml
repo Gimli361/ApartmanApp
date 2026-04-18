@@ -28,7 +28,7 @@
         <!-- FCM varsayılan bildirim kanalı -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="apartman_bildirim" />
+            android:value="apartman_channel" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/ic_launcher" />

@@ -18,7 +18,7 @@ var firebaseCredPath = Path.Combine(builder.Environment.ContentRootPath,
     "apartmanapp-af9a4-firebase-adminsdk-fbsvc-55b7ce41ce.json");
 FirebaseApp.Create(new AppOptions
 {
-    Credential = GoogleCredential.FromFile(firebaseCredPath),
+    Credential = CredentialFactory.FromFile(firebaseCredPath, "service_account"),
 });
 
 // DbContext
@@ -26,7 +26,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
 // AutoMapper
-builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
 // Services
 builder.Services.AddScoped<IArizaService, ArizaService>();
@@ -38,6 +38,9 @@ builder.Services.AddScoped<IFcmService, FcmService>();
 builder.Services.AddScoped<IAidatService, AidatService>();
 builder.Services.AddScoped<IOtomatikAidatService, OtomatikAidatService>();
 builder.Services.AddScoped<IArizaTakipService, ArizaTakipService>();
+builder.Services.AddScoped<IBlokService, BlokService>();
+builder.Services.AddScoped<IDaireService, DaireService>();
+builder.Services.AddScoped<IOylamaService, OylamaService>();
 builder.Services.AddHostedService<AidatUretimBackgroundService>();
 builder.Services.AddHttpContextAccessor();
 
@@ -67,6 +70,8 @@ builder.Services.AddControllers()
             System.Text.Json.JsonNamingPolicy.CamelCase;
         opt.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter());
+        opt.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -107,6 +112,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Bekleyen migration'ları uygula
+using (var scope = app.Services.CreateScope())
+{
+    var db2 = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db2.Database.Migrate();
+}
+
 // wwwroot/uploads klasörünü başlangıçta oluştur (Faz 5 fix)
 var uploadsPath = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads");
 Directory.CreateDirectory(uploadsPath);
@@ -122,4 +134,44 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+// Admin seed — yoksa oluştur, varsa şifresini sıfırla
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var adminEmail = app.Configuration["AdminSeed:Email"]
+        ?? throw new InvalidOperationException("AdminSeed:Email yapılandırılmamış.");
+    var adminSifre = app.Configuration["AdminSeed:Sifre"]
+        ?? throw new InvalidOperationException("AdminSeed:Sifre yapılandırılmamış.");
+
+    var admin = db.Kullanicilar
+        .FirstOrDefault(k => k.Email.ToLower() == adminEmail.ToLower());
+
+    if (admin is null)
+    {
+        db.Kullanicilar.Add(new ApartmanApp.Core.Entities.Kullanici
+        {
+            Ad = "Admin",
+            Soyad = "Kullanıcı",
+            Email = adminEmail,
+            Rol = ApartmanApp.Core.Enums.KullaniciRol.Admin,
+            DaireNo = "",
+            SifreHash = BCrypt.Net.BCrypt.HashPassword(adminSifre),
+        });
+        Console.WriteLine("[Seed] Admin kullanıcısı oluşturuldu.");
+    }
+    else
+    {
+        bool gecerli = false;
+        try { gecerli = BCrypt.Net.BCrypt.Verify(adminSifre, admin.SifreHash); } catch { }
+        if (!gecerli)
+        {
+            admin.SifreHash = BCrypt.Net.BCrypt.HashPassword(adminSifre);
+            Console.WriteLine("[Seed] Admin şifresi sıfırlandı.");
+        }
+        admin.Rol = ApartmanApp.Core.Enums.KullaniciRol.Admin;
+    }
+    db.SaveChanges();
+    Console.WriteLine($"[Seed] Giriş: {adminEmail}");
+}
+
 app.Run();

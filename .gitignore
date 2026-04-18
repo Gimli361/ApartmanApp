@@ -6,6 +6,7 @@
 .vs/
 *.DotSettings.user
 appsettings.Development.json
+appsettings.Production.json
 
 # Firebase Admin SDK (hassas credential — asla commit'leme)
 **/*firebase-adminsdk*.json

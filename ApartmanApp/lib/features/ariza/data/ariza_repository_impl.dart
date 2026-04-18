@@ -43,6 +43,7 @@ class ArizaRepositoryImpl implements ArizaRepository {
     required String aciklama,
     required ArizaOncelik oncelik,
     required int bildirenId,
+    bool ortakAlan = false,
   }) async {
     try {
       final res = await _api.dio.post('/api/ariza', data: {
@@ -50,6 +51,7 @@ class ArizaRepositoryImpl implements ArizaRepository {
         'aciklama': aciklama,
         'oncelik': oncelik.toApiString(),
         'bildirenId': bildirenId,
+        'ortakAlan': ortakAlan,
       });
       return Success(ArizaModel.fromJson(res.data['data']));
     } on DioException catch (e) {
@@ -90,7 +92,7 @@ class ArizaRepositoryImpl implements ArizaRepository {
     try {
       final res = await _api.dio.get('/api/ariza/$arizaId/foto');
       final data = res.data['data'] as List<dynamic>;
-      final baseUrl = AppConstants.baseUrl;
+      const baseUrl = AppConstants.baseUrl;
       final urls = data.cast<Map<String, dynamic>>().map((f) {
         final raw = f['url'] as String;
         // URL'deki host kısmını emülatör için baseUrl ile değiştir

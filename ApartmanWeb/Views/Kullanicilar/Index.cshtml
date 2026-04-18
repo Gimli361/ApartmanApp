@@ -61,6 +61,10 @@
                                             onclick="openEditModal(@k.Id, '@k.AdSoyad', '@k.DaireNo')">
                                         <i class="bi bi-pencil"></i>
                                     </button>
+                                    <button class="btn btn-sm btn-outline-warning me-1" title="Şifre Sıfırla"
+                                            onclick="openSifreModal(@k.Id, '@k.AdSoyad')">
+                                        <i class="bi bi-key"></i>
+                                    </button>
                                     <button class="btn btn-sm btn-outline-danger" title="Sil"
                                             onclick="openDeleteModal(@k.Id, '@k.AdSoyad')">
                                         <i class="bi bi-trash"></i>
@@ -110,11 +114,19 @@
                     <input type="password" id="ekleSifre" class="form-control" placeholder="Şifre belirleyin">
                 </div>
                 <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label class="form-label">Daire No</label>
-                        <input type="text" id="ekleDaireNo" class="form-control" placeholder="Örn: A1, 3B">
+                    <div class="col-4">
+                        <label class="form-label">Blok</label>
+                        <select id="ekleBlok" class="form-select">
+                            <option value="">— Seç —</option>
+                        </select>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
+                        <label class="form-label">Daire No</label>
+                        <div id="ekleDaireWrap">
+                            <input type="text" id="ekleDaireNo" class="form-control" placeholder="Örn: 3, 12">
+                        </div>
+                    </div>
+                    <div class="col-4">
                         <label class="form-label">Rol <span class="zorunlu">*</span></label>
                         <select id="ekleRol" class="form-select">
                             <option value="Sakin">Sakin</option>
@@ -170,8 +182,113 @@
     </div>
 </div>
 
+<!-- Şifre Sıfırla Modal -->
+<div class="modal fade" id="sifreModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-key me-2 text-warning"></i>Şifre Sıfırla</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="sifreId">
+                <p class="text-muted small mb-3">
+                    <strong id="sifreKullaniciAd"></strong> adlı kullanıcının şifresi sıfırlanacak.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label">Yeni Şifre <span class="zorunlu">*</span></label>
+                    <input type="password" id="sifreYeni" class="form-control" placeholder="Yeni şifre belirleyin">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Şifre Tekrar <span class="zorunlu">*</span></label>
+                    <input type="password" id="sifreTekrar" class="form-control" placeholder="Şifreyi tekrar girin">
+                </div>
+                <div id="sifreHata" class="alert alert-danger d-none py-2 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-warning" id="sifreKaydetBtn" onclick="saveSifre()">
+                    <i class="bi bi-key me-1"></i> Sıfırla
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
+// Blok+daire verisi (modal açılınca bir kez yüklenir)
+let _blokData = null;
+
+document.getElementById('ekleModal').addEventListener('show.bs.modal', () => {
+    if (_blokData) return; // Zaten yüklü
+    fetch('/Kullanicilar/Bloklar')
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) return;
+            _blokData = res.data; // [{ id, ad, daireler: [{ id, daireNo }] }]
+            const sel = document.getElementById('ekleBlok');
+            res.data.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.ad;
+                opt.dataset.blokId = b.id;
+                opt.textContent = b.ad + ' Blok';
+                sel.appendChild(opt);
+            });
+        });
+});
+
+document.getElementById('ekleBlok').addEventListener('change', function () {
+    const daireEl = document.getElementById('ekleDaireNo');
+    const daireWrap = document.getElementById('ekleDaireWrap');
+
+    const selected = this.options[this.selectedIndex];
+    const blokId = selected ? parseInt(selected.dataset.blokId) : null;
+    const blok = _blokData?.find(b => b.id === blokId);
+
+    // Mevcut daire seçeneklerini temizle, select'e dönüştür
+    if (blok && blok.daireler && blok.daireler.length > 0) {
+        // Input'u select'e çevir (yoksa oluştur)
+        let sel = document.getElementById('ekleDaireSelect');
+        if (!sel) {
+            sel = document.createElement('select');
+            sel.id = 'ekleDaireSelect';
+            sel.className = 'form-select';
+            daireWrap.innerHTML = '';
+            daireWrap.appendChild(sel);
+        }
+        sel.innerHTML = '<option value="">— Seç —</option>';
+        blok.daireler.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.daireNo;
+            opt.textContent = 'Daire ' + d.daireNo;
+            sel.appendChild(opt);
+        });
+    } else {
+        // Tanımlı daire yoksa serbest metin
+        let input = document.getElementById('ekleDaireNo');
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'ekleDaireNo';
+            input.className = 'form-control';
+            input.placeholder = 'Örn: 3, 12';
+            daireWrap.innerHTML = '';
+            daireWrap.appendChild(input);
+        }
+    }
+});
+
+document.getElementById('ekleModal').addEventListener('hidden.bs.modal', () => {
+    ['ekleAd','ekleSoyad','ekleEmail','ekleSifre'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ekleBlok').value = '';
+    document.getElementById('ekleRol').value = 'Sakin';
+    document.getElementById('ekleHata').classList.add('d-none');
+    // Daire alanını serbest metin'e sıfırla
+    const wrap = document.getElementById('ekleDaireWrap');
+    wrap.innerHTML = '<input type="text" id="ekleDaireNo" class="form-control" placeholder="Örn: 3, 12">';
+});
+
 function filterTable() {
     const query = document.getElementById('aramaInput').value.toLowerCase();
     document.querySelectorAll('#kullaniciTable tbody tr').forEach(row => {
@@ -189,13 +306,18 @@ function addUser() {
         showError('ekleHata', 'Ad, soyad, e-posta ve şifre zorunludur.'); return;
     }
 
+    const blok = document.getElementById('ekleBlok').value;
+    const daireNoEl = document.getElementById('ekleDaireSelect') || document.getElementById('ekleDaireNo');
+    const daireNo = daireNoEl ? daireNoEl.value.trim() : '';
+    const daireNoFull = blok && daireNo ? `${blok}${daireNo}` : (blok || daireNo || '');
+
     setLoading('ekleKaydetBtn', true);
     fetch('/Kullanicilar/Ekle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             ad, soyad, email, sifre,
-            daireNo: document.getElementById('ekleDaireNo').value.trim(),
+            daireNo: daireNoFull,
             rol: document.getElementById('ekleRol').value
         })
     }).then(r => r.json()).then(res => {
@@ -250,6 +372,48 @@ function openDeleteModal(id, fullName) {
             if (res.success) { toast('Üye silindi.', 'success'); setTimeout(() => location.reload(), 800); }
             else toast(res.message || 'Silme işlemi başarısız.', 'danger');
         });
+    });
+}
+
+function openSifreModal(id, fullName) {
+    document.getElementById('sifreId').value = id;
+    document.getElementById('sifreKullaniciAd').textContent = fullName;
+    document.getElementById('sifreYeni').value = '';
+    document.getElementById('sifreTekrar').value = '';
+    document.getElementById('sifreHata').classList.add('d-none');
+    document.getElementById('sifreKaydetBtn').disabled = false;
+    document.getElementById('sifreKaydetBtn').innerHTML = '<i class="bi bi-key me-1"></i> Sıfırla';
+    new bootstrap.Modal(document.getElementById('sifreModal')).show();
+}
+
+function saveSifre() {
+    const id = document.getElementById('sifreId').value;
+    const yeni = document.getElementById('sifreYeni').value;
+    const tekrar = document.getElementById('sifreTekrar').value;
+    if (!yeni) { showError('sifreHata', 'Yeni şifre zorunludur.'); return; }
+    if (yeni !== tekrar) { showError('sifreHata', 'Şifreler eşleşmiyor.'); return; }
+
+    const btn = document.getElementById('sifreKaydetBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sıfırlanıyor...';
+
+    fetch('/Kullanicilar/SifreSifirla?id=' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ yeniSifre: yeni })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('sifreModal')).hide();
+            toast('Şifre başarıyla sıfırlandı.', 'success');
+        } else {
+            showError('sifreHata', res.message || 'Bir hata oluştu.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-key me-1"></i> Sıfırla';
+        }
+    }).catch(() => {
+        showError('sifreHata', 'Sunucuya bağlanılamadı.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-key me-1"></i> Sıfırla';
     });
 }
 

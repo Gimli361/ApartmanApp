@@ -8,4 +8,8 @@ public class ArizaCreateDto
     public string Aciklama { get; set; } = string.Empty;
     public ArizaOncelik Oncelik { get; set; } = ArizaOncelik.Orta;
     public int BildirenId { get; set; }
+    /// <summary>
+    /// true → BlokNo atanmaz (ortak alan); false → bildirenin BlokNo'su atanır.
+    /// </summary>
+    public bool OrtakAlan { get; set; } = false;
 }

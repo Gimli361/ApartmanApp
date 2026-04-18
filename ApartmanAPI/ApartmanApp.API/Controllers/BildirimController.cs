@@ -30,6 +30,14 @@ public class BildirimController(IBildirimService bildirimService) : ControllerBa
         return Ok(new { count });
     }
 
+    /// Tüm bildirimleri okundu olarak işaretle
+    [HttpPatch("tumu-okundu")]
+    public async Task<IActionResult> MarkAllAsRead()
+    {
+        var result = await bildirimService.MarkAllAsReadAsync(CurrentUserId);
+        return Ok(result);
+    }
+
     /// Bildirimi okundu olarak işaretle
     [HttpPatch("{id:int}/okundu")]
     public async Task<IActionResult> MarkAsRead(int id)
@@ -52,6 +60,18 @@ public class BildirimController(IBildirimService bildirimService) : ControllerBa
         return Ok(new { message = "Duyuru tüm sakinlere gönderildi." });
     }
 
+    /// Belirli bir bloğa bildirim (sadece admin)
+    [HttpPost("blok")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SendToBlok([FromBody] BlokBildirimDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.BlokNo) || string.IsNullOrWhiteSpace(dto.Baslik))
+            return BadRequest("Blok No, başlık ve içerik zorunludur.");
+
+        await bildirimService.SendToBlokAsync(dto.BlokNo, dto.Baslik, dto.Icerik);
+        return Ok(new { message = $"{dto.BlokNo} bloğundaki tüm sakinlere bildirim gönderildi." });
+    }
+
     /// Belirli bir daireye bildirim (sadece admin)
     [HttpPost("daire")]
     [Authorize(Roles = "Admin")]
@@ -60,7 +80,10 @@ public class BildirimController(IBildirimService bildirimService) : ControllerBa
         if (string.IsNullOrWhiteSpace(dto.DaireNo) || string.IsNullOrWhiteSpace(dto.Baslik))
             return BadRequest("Daire No, başlık ve içerik zorunludur.");
 
-        await bildirimService.SendToDaireAsync(dto.DaireNo, dto.Baslik, dto.Icerik);
-        return Ok(new { message = $"{dto.DaireNo} dairesine bildirim gönderildi." });
+        await bildirimService.SendToDaireAsync(dto.DaireNo, dto.Baslik, dto.Icerik, dto.BlokNo);
+        var hedef = string.IsNullOrWhiteSpace(dto.BlokNo)
+            ? dto.DaireNo
+            : $"{dto.BlokNo} Blok {dto.DaireNo}";
+        return Ok(new { message = $"{hedef} dairesine bildirim gönderildi." });
     }
 }

@@ -13,7 +13,7 @@ namespace ApartmanApp.API.Controllers;
 public class KullaniciController(IKullaniciService kullaniciService) : ControllerBase
 {
     private int CurrentUserId =>
-        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
     /// Oturumdaki kullanıcının bilgileri
     [HttpGet("me")]
     public async Task<IActionResult> GetMe()
@@ -35,6 +35,9 @@ public class KullaniciController(IKullaniciService kullaniciService) : Controlle
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
+        if (CurrentUserId != id && !User.IsInRole("Admin"))
+            return Forbid();
+
         var result = await kullaniciService.GetByIdAsync(id);
         if (!result.Success)
             return NotFound(result);
@@ -87,9 +90,26 @@ public class KullaniciController(IKullaniciService kullaniciService) : Controlle
         return Ok(result);
     }
 
+    /// Admin tarafından kullanıcı şifresi sıfırlama (eski şifre gerekmez)
+    [HttpPatch("{id:int}/sifre-sifirla")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AdminSifreSifirla(int id, [FromBody] AdminSifreSifirlaDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.YeniSifre))
+            return BadRequest("Yeni şifre zorunludur.");
+
+        var result = await kullaniciService.AdminSifreSifirlaAsync(id, dto.YeniSifre);
+        if (!result.Success)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
     [HttpPut("{id:int}/fcm-token")]
     public async Task<IActionResult> UpdateFcmToken(int id, [FromBody] FcmTokenDto dto)
     {
+        if (CurrentUserId != id && !User.IsInRole("Admin"))
+            return Forbid();
+
         if (string.IsNullOrWhiteSpace(dto.Token))
             return BadRequest("Token boş olamaz.");
         var result = await kullaniciService.UpdateFcmTokenAsync(id, dto.Token);
@@ -99,6 +119,7 @@ public class KullaniciController(IKullaniciService kullaniciService) : Controlle
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await kullaniciService.DeleteAsync(id);

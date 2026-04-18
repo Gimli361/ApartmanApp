@@ -19,12 +19,34 @@ public class BildirimlerController : Controller
     {
         try
         {
-            var result = await _apiService.GetAsync<ApiResult<List<BildirimDto>>>("/api/bildirim");
-            return View(result?.Data ?? new List<BildirimDto>());
+            var bildirimTask = _apiService.GetAsync<ApiResult<List<BildirimDto>>>("/api/bildirim");
+            var blokTask = _apiService.GetAsync<ApiResult<List<BlokDto>>>("/api/blok/detay");
+            await Task.WhenAll(bildirimTask, blokTask);
+
+            ViewBag.Bloklar = blokTask.Result?.Data ?? new List<BlokDto>();
+            return View(bildirimTask.Result?.Data ?? new List<BildirimDto>());
         }
         catch (UnauthorizedAccessException)
         {
             return RedirectToAction("Login", "Account");
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> TumuOkundu()
+    {
+        try
+        {
+            await _apiService.PatchAsync<object>("/api/bildirim/tumu-okundu");
+            return Json(new { success = true });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Json(new { success = false, message = "Oturum süresi doldu." });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
         }
     }
 
@@ -52,6 +74,24 @@ public class BildirimlerController : Controller
         try
         {
             await _apiService.PostAsync<object>("/api/bildirim/duyuru", request);
+            return Json(new { success = true });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Json(new { success = false, message = "Oturum suresi doldu." });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> BlokBildirim([FromBody] BlokBildirimRequest request)
+    {
+        try
+        {
+            await _apiService.PostAsync<object>("/api/bildirim/blok", request);
             return Json(new { success = true });
         }
         catch (UnauthorizedAccessException)

@@ -11,6 +11,10 @@ import '../features/aidat/presentation/aidat_list_screen.dart';
 import '../features/aidat/presentation/aidat_create_screen.dart';
 import '../features/bildirim/presentation/bildirim_list_screen.dart';
 import '../features/oylama/presentation/oylama_list_screen.dart';
+import '../features/oylama/presentation/oylama_detail_screen.dart';
+import '../features/oylama/presentation/oylama_create_screen.dart';
+import '../features/kullanici/presentation/kullanici_list_screen.dart';
+import '../features/bina/presentation/bina_yonetim_screen.dart';
 import '../shared/widgets/main_scaffold.dart';
 
 /// Auth state değişince GoRouter'ı yeniden değerlendir
@@ -87,6 +91,27 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/ana-sayfa/oylamalar',
             builder: (context, state) => const OylamaListScreen(),
+            routes: [
+              GoRoute(
+                path: 'yeni',
+                builder: (context, state) => const OylamaCreateScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final id = int.parse(state.pathParameters['id']!);
+                  return OylamaDetailScreen(oylamaId: id);
+                },
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/ana-sayfa/kullanicilar',
+            builder: (context, state) => const KullaniciListScreen(),
+          ),
+          GoRoute(
+            path: '/ana-sayfa/bina',
+            builder: (context, state) => const BinaYonetimScreen(),
           ),
           GoRoute(
             path: '/profil',

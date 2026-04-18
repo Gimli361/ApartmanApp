@@ -1,0 +1,198 @@
+@model List<OylamaListDto>
+@{
+    ViewData["Title"] = "Oylamalar";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0 fw-bold">
+            <i class="bi bi-how-to-vote me-2 text-primary"></i>Oylamalar
+        </h4>
+        <small class="text-muted">Apartman kararları için oylama yönetimi</small>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="yeniOylamaModal()">
+        <i class="bi bi-plus-lg me-1"></i> Yeni Oylama
+    </button>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-how-to-vote fs-1 d-block mb-3 opacity-25"></i>
+        <p>Henüz oylama bulunmuyor.</p>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var o in Model)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0 fw-semibold">@o.Baslik</h6>
+                            @if (!o.AktifMi)
+                            {
+                                <span class="badge bg-secondary ms-2">Pasif</span>
+                            }
+                            else if (o.SuresiDoldu)
+                            {
+                                <span class="badge bg-warning text-dark ms-2">Süresi Doldu</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success ms-2">Açık</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(o.Aciklama))
+                        {
+                            <p class="text-muted small mb-2" style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">@o.Aciklama</p>
+                        }
+                        <div class="mt-auto">
+                            <div class="d-flex justify-content-between text-muted small mb-2">
+                                <span><i class="bi bi-how-to-vote me-1"></i>@o.ToplamOySayisi oy</span>
+                                <span><i class="bi bi-clock me-1"></i>@o.BitisTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <a href="/Oylamalar/Detay/@o.Id" class="btn btn-outline-primary btn-sm flex-grow-1">
+                                    <i class="bi bi-eye me-1"></i>Detay
+                                </a>
+                                <button class="btn btn-outline-secondary btn-sm"
+                                        onclick="toggleOylama(@o.Id, this)"
+                                        title="@(o.AktifMi ? "Pasif Et" : "Aktif Et")">
+                                    <i class="bi bi-@(o.AktifMi ? "pause" : "play")"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm"
+                                        onclick="silOylama(@o.Id)"
+                                        title="Sil">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- Yeni Oylama Modal -->
+<div class="modal fade" id="yeniOylamaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-how-to-vote me-2"></i>Yeni Oylama Oluştur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Başlık <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="oyBaslik" maxlength="200" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Açıklama</label>
+                    <textarea class="form-control" id="oyAciklama" rows="2" maxlength="1000"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Bitiş Tarihi <span class="text-danger">*</span></label>
+                    <input type="datetime-local" class="form-control" id="oyBitisTarihi" />
+                </div>
+                <div class="mb-2 d-flex justify-content-between align-items-center">
+                    <label class="form-label fw-semibold mb-0">Seçenekler <span class="text-danger">*</span></label>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="secenekEkle()">
+                        <i class="bi bi-plus"></i> Seçenek Ekle
+                    </button>
+                </div>
+                <div id="seceneklerContainer">
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control secenek-input" placeholder="Seçenek 1" />
+                    </div>
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control secenek-input" placeholder="Seçenek 2" />
+                    </div>
+                </div>
+                <div id="oylamaHata" class="text-danger small d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="oylamaOlustur()">
+                    <i class="bi bi-check2 me-1"></i>Oluştur
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+let secenekSayisi = 2;
+
+function yeniOylamaModal() {
+    document.getElementById('oyBaslik').value = '';
+    document.getElementById('oyAciklama').value = '';
+    // Varsayılan bitiş: 7 gün sonra
+    const bitisTarihi = new Date();
+    bitisTarihi.setDate(bitisTarihi.getDate() + 7);
+    document.getElementById('oyBitisTarihi').value = bitisTarihi.toISOString().slice(0, 16);
+    document.getElementById('seceneklerContainer').innerHTML = `
+        <div class="input-group mb-2"><input type="text" class="form-control secenek-input" placeholder="Seçenek 1" /></div>
+        <div class="input-group mb-2"><input type="text" class="form-control secenek-input" placeholder="Seçenek 2" /></div>`;
+    secenekSayisi = 2;
+    document.getElementById('oylamaHata').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('yeniOylamaModal')).show();
+}
+
+function secenekEkle() {
+    if (secenekSayisi >= 8) return;
+    secenekSayisi++;
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `<input type="text" class="form-control secenek-input" placeholder="Seçenek ${secenekSayisi}" />
+        <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>`;
+    document.getElementById('seceneklerContainer').appendChild(div);
+}
+
+async function oylamaOlustur() {
+    const baslik = document.getElementById('oyBaslik').value.trim();
+    const aciklama = document.getElementById('oyAciklama').value.trim();
+    const bitisTarihi = document.getElementById('oyBitisTarihi').value;
+    const secenekler = Array.from(document.querySelectorAll('.secenek-input'))
+        .map(i => i.value.trim())
+        .filter(s => s.length > 0);
+
+    const hataEl = document.getElementById('oylamaHata');
+    if (!baslik) { hataEl.textContent = 'Başlık zorunludur.'; hataEl.classList.remove('d-none'); return; }
+    if (!bitisTarihi) { hataEl.textContent = 'Bitiş tarihi zorunludur.'; hataEl.classList.remove('d-none'); return; }
+    if (secenekler.length < 2) { hataEl.textContent = 'En az 2 seçenek giriniz.'; hataEl.classList.remove('d-none'); return; }
+    hataEl.classList.add('d-none');
+
+    const res = await fetch('/Oylamalar/Ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '' },
+        body: JSON.stringify({ baslik, aciklama: aciklama || null, bitisTarihi: new Date(bitisTarihi).toISOString(), secenekler })
+    });
+    const json = await res.json();
+    if (json.success) {
+        bootstrap.Modal.getInstance(document.getElementById('yeniOylamaModal')).hide();
+        window.location.href = `/Oylamalar/Detay/${json.id}`;
+    } else {
+        hataEl.textContent = json.message || 'Hata oluştu.';
+        hataEl.classList.remove('d-none');
+    }
+}
+
+async function toggleOylama(id, btn) {
+    const res = await fetch(`/Oylamalar/Toggle/${id}`, { method: 'POST' });
+    const json = await res.json();
+    if (json.success) location.reload();
+}
+
+async function silOylama(id) {
+    if (!confirm('Bu oylama silinecek. Emin misiniz?')) return;
+    const res = await fetch(`/Oylamalar/Sil/${id}`, { method: 'POST' });
+    const json = await res.json();
+    if (json.success) location.reload();
+}
+</script>
+}

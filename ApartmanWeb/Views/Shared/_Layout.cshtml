@@ -24,6 +24,10 @@
                    asp-controller="Home" asp-action="Index">
                     <i class="bi bi-speedometer2 me-2"></i> Gösterge Paneli
                 </a>
+                <a class="nav-link sidebar-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Binam" ? "active" : "")"
+                   asp-controller="Binam" asp-action="Index">
+                    <i class="bi bi-building me-2"></i> Binam
+                </a>
                 <a class="nav-link sidebar-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Kullanicilar" ? "active" : "")"
                    asp-controller="Kullanicilar" asp-action="Index">
                     <i class="bi bi-people me-2"></i> Üye Yönetimi
@@ -39,6 +43,10 @@
                 <a class="nav-link sidebar-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Bildirimler" ? "active" : "")"
                    asp-controller="Bildirimler" asp-action="Index">
                     <i class="bi bi-bell me-2"></i> Bildirimler
+                </a>
+                <a class="nav-link sidebar-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Oylamalar" ? "active" : "")"
+                   asp-controller="Oylamalar" asp-action="Index">
+                    <i class="bi bi-check2-square me-2"></i> Oylamalar
                 </a>
             </nav>
             <div class="p-3 border-top border-secondary">

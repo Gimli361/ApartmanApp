@@ -69,8 +69,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _loadStoredUser() async {
     final result = await _repo.getCurrentUser();
-    if (result is Success<UserModel?, AppError>) {
+    if (result is Success<UserModel?, AppError> && result.data != null) {
       state = state.copyWith(user: result.data);
+      // Otomatik girişte de FCM token'ı backend'e gönder
+      await _notificationService.sendTokenToServer(result.data!.id);
     }
   }
 
@@ -80,7 +82,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     if (result is Success<UserModel, AppError>) {
       state = state.copyWith(isLoading: false, user: result.data);
-      _notificationService.sendTokenToServer(result.data.id);
+      await _notificationService.sendTokenToServer(result.data.id);
       return true;
     } else if (result is Failure<UserModel, AppError>) {
       state = state.copyWith(

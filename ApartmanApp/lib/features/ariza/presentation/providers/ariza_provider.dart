@@ -64,6 +64,7 @@ class ArizaListNotifier extends StateNotifier<ArizaListState> {
     required String aciklama,
     required ArizaOncelik oncelik,
     required int bildirenId,
+    bool ortakAlan = false,
     File? foto,
   }) async {
     final result = await _repo.createAriza(
@@ -71,6 +72,7 @@ class ArizaListNotifier extends StateNotifier<ArizaListState> {
       aciklama: aciklama,
       oncelik: oncelik,
       bildirenId: bildirenId,
+      ortakAlan: ortakAlan,
     );
 
     if (result is Success<ArizaModel, AppError>) {

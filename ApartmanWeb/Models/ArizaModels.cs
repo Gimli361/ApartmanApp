@@ -11,6 +11,9 @@ public class ArizaDto
     public string? BildirenDaireNo { get; set; }
     public int BildirenId { get; set; }
     public string? BildirenAdSoyad { get; set; }
+    public string? BlokNo { get; set; }
+
+    public bool OrtakAlan => string.IsNullOrWhiteSpace(BlokNo);
 }
 
 public class ArizaFotoDto
@@ -31,4 +34,5 @@ public class ArizaCreateRequest
     public string Baslik { get; set; } = string.Empty;
     public string Aciklama { get; set; } = string.Empty;
     public string Oncelik { get; set; } = "Orta";
+    public bool OrtakAlan { get; set; } = false;
 }

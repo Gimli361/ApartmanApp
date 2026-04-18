@@ -50,4 +50,63 @@ class BildirimRepositoryImpl implements BildirimRepository {
       return Failure(AppError(e.toString()));
     }
   }
+
+  @override
+  Future<Result<void, AppError>> markAllAsRead() async {
+    try {
+      await _api.dio.patch('/api/bildirim/tumu-okundu');
+      return const Success(null);
+    } on DioException catch (e) {
+      return Failure(ApiService.handleDioError(e));
+    } catch (e) {
+      return Failure(AppError(e.toString()));
+    }
+  }
+
+  @override
+  Future<Result<void, AppError>> sendDuyuru(
+      String baslik, String icerik) async {
+    try {
+      await _api.dio.post('/api/bildirim/duyuru',
+          data: {'baslik': baslik, 'icerik': icerik});
+      return const Success(null);
+    } on DioException catch (e) {
+      return Failure(ApiService.handleDioError(e));
+    } catch (e) {
+      return Failure(AppError(e.toString()));
+    }
+  }
+
+  @override
+  Future<Result<void, AppError>> sendBlokBildirim(
+      String blokNo, String baslik, String icerik) async {
+    try {
+      await _api.dio.post('/api/bildirim/blok',
+          data: {'blokNo': blokNo, 'baslik': baslik, 'icerik': icerik});
+      return const Success(null);
+    } on DioException catch (e) {
+      return Failure(ApiService.handleDioError(e));
+    } catch (e) {
+      return Failure(AppError(e.toString()));
+    }
+  }
+
+  @override
+  Future<Result<void, AppError>> sendDaireBildirim(
+      String daireNo, String baslik, String icerik, {String? blokNo}) async {
+    try {
+      final body = <String, dynamic>{
+        'daireNo': daireNo,
+        'baslik': baslik,
+        'icerik': icerik,
+      };
+      if (blokNo != null && blokNo.isNotEmpty) body['blokNo'] = blokNo;
+      await _api.dio.post('/api/bildirim/daire', data: body);
+      return const Success(null);
+    } on DioException catch (e) {
+      return Failure(ApiService.handleDioError(e));
+    } catch (e) {
+      return Failure(AppError(e.toString()));
+    }
+  }
 }

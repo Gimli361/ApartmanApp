@@ -1,6 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/result.dart';
+import '../../../shared/models/blok_model.dart';
+import '../../../shared/models/daire_model.dart';
+import '../../../shared/services/api_service.dart';
 import 'providers/auth_provider.dart';
 
 class ProfilScreen extends ConsumerStatefulWidget {
@@ -63,9 +67,14 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _adCtrl;
   late final TextEditingController _soyadCtrl;
-  late final TextEditingController _daireCtrl;
-  late final TextEditingController _blokCtrl;
+  final TextEditingController _daireCtrl = TextEditingController();
+  BlokModel? _secilenBlok;
+  DaireModel? _secilenDaire;
+  List<BlokModel> _bloklar = [];
+  bool _bloklarYukleniyor = true;
   bool _isLoading = false;
+
+  List<DaireModel> get _mevcutDaireler => _secilenBlok?.daireler ?? [];
 
   @override
   void initState() {
@@ -75,8 +84,52 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
     _adCtrl = TextEditingController(text: parts.isNotEmpty ? parts.first : '');
     _soyadCtrl = TextEditingController(
         text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
-    _daireCtrl = TextEditingController(text: user?.daireNo ?? '');
-    _blokCtrl = TextEditingController(text: user?.blokNo ?? '');
+    _loadBloklar();
+  }
+
+  Future<void> _loadBloklar() async {
+    final user = ref.read(authProvider).user;
+    final api = ref.read(apiServiceProvider);
+    try {
+      final res = await api.dio.get('/api/blok');
+      final data = (res.data['data'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(BlokModel.fromJson)
+          .toList();
+      if (mounted) {
+        setState(() {
+          _bloklar = data;
+          _bloklarYukleniyor = false;
+          final mevcutBlokAd = user?.blokNo;
+          if (mevcutBlokAd != null && mevcutBlokAd.isNotEmpty) {
+            _secilenBlok = data.where((b) => b.ad == mevcutBlokAd).firstOrNull;
+            if (_secilenBlok != null) {
+              _secilenDaire = _secilenBlok!.daireler
+                  .where((d) => d.daireNo == (user?.daireNo ?? ''))
+                  .firstOrNull;
+              if (_secilenDaire == null) _daireCtrl.text = user?.daireNo ?? '';
+            }
+          } else {
+            _daireCtrl.text = user?.daireNo ?? '';
+          }
+        });
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        setState(() {
+          _bloklarYukleniyor = false;
+          _daireCtrl.text = user?.daireNo ?? '';
+        });
+        debugPrint('[BlokLoad] ${ApiService.handleDioError(e).message}');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _bloklarYukleniyor = false;
+          _daireCtrl.text = user?.daireNo ?? '';
+        });
+      }
+    }
   }
 
   @override
@@ -84,7 +137,6 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
     _adCtrl.dispose();
     _soyadCtrl.dispose();
     _daireCtrl.dispose();
-    _blokCtrl.dispose();
     super.dispose();
   }
 
@@ -92,12 +144,12 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
-    final blokNoVal = _blokCtrl.text.trim();
+    final daireNoRaw = _secilenDaire?.daireNo ?? _daireCtrl.text.trim();
     final result = await ref.read(authProvider.notifier).updateProfile(
           ad: _adCtrl.text.trim(),
           soyad: _soyadCtrl.text.trim(),
-          daireNo: _daireCtrl.text.trim(),
-          blokNo: blokNoVal.isEmpty ? null : blokNoVal,
+          daireNo: daireNoRaw,
+          blokNo: _secilenBlok?.ad,
         );
 
     setState(() => _isLoading = false);
@@ -174,25 +226,83 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
                   v == null || v.trim().isEmpty ? 'Soyad boş olamaz.' : null,
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _daireCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Daire No',
-                border: OutlineInputBorder(),
-              ),
-              validator: (v) => v == null || v.trim().isEmpty
-                  ? 'Daire no boş olamaz.'
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _blokCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Blok No (ör: A, B, 1)',
-                border: OutlineInputBorder(),
-                helperText: 'Aynı bloktaki arızaları takip etmek için doldurun.',
-              ),
-            ),
+            _bloklarYukleniyor
+                ? const SizedBox(
+                    height: 48,
+                    child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2)))
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: DropdownButtonFormField<BlokModel?>(
+                          value: _secilenBlok,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Blok',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: [
+                            const DropdownMenuItem<BlokModel?>(
+                              value: null,
+                              child: Text('— Seç —'),
+                            ),
+                            ..._bloklar.map((b) =>
+                                DropdownMenuItem<BlokModel?>(
+                                  value: b,
+                                  child: Text('${b.ad} Blok'),
+                                )),
+                          ],
+                          onChanged: (b) => setState(() {
+                            _secilenBlok = b;
+                            _secilenDaire = null;
+                            _daireCtrl.clear();
+                          }),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 4,
+                        child: _mevcutDaireler.isNotEmpty
+                            ? DropdownButtonFormField<DaireModel?>(
+                                value: _secilenDaire,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                  labelText: 'Daire',
+                                  border: OutlineInputBorder(),
+                                ),
+                                validator: (v) => v == null && _daireCtrl.text.trim().isEmpty
+                                    ? 'Daire seçiniz.'
+                                    : null,
+                                items: [
+                                  const DropdownMenuItem<DaireModel?>(
+                                    value: null,
+                                    child: Text('— Seç —'),
+                                  ),
+                                  ..._mevcutDaireler.map((d) =>
+                                      DropdownMenuItem<DaireModel?>(
+                                        value: d,
+                                        child: Text('Daire ${d.daireNo}'),
+                                      )),
+                                ],
+                                onChanged: (d) =>
+                                    setState(() => _secilenDaire = d),
+                              )
+                            : TextFormField(
+                                controller: _daireCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Daire No',
+                                  hintText: 'Örn: 3, 12',
+                                  border: OutlineInputBorder(),
+                                ),
+                                validator: (v) => v == null || v.trim().isEmpty
+                                    ? 'Daire no boş olamaz.'
+                                    : null,
+                              ),
+                      ),
+                    ],
+                  ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,

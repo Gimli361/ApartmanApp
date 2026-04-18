@@ -74,9 +74,31 @@ public class AccountController : Controller
 
             return RedirectToAction("Index", "Home");
         }
-        catch (Exception)
+        catch (UnauthorizedAccessException)
         {
-            model.ErrorMessage = "Sunucu ile baglanti kurulamadi.";
+            model.ErrorMessage = "Email veya şifre hatalı.";
+            return View(model);
+        }
+        catch (HttpRequestException ex) when (
+            ex.InnerException is System.Net.Sockets.SocketException ||
+            ex.InnerException is System.IO.IOException)
+        {
+            model.ErrorMessage = "API sunucusuna bağlanılamadı. API'nin çalıştığından emin olun (http://localhost:5255).";
+            return View(model);
+        }
+        catch (TaskCanceledException)
+        {
+            model.ErrorMessage = "Bağlantı zaman aşımına uğradı. API sunucusunu kontrol edin.";
+            return View(model);
+        }
+        catch (HttpRequestException ex)
+        {
+            model.ErrorMessage = $"Sunucu hatası: {ex.Message}";
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            model.ErrorMessage = $"Beklenmeyen hata: {ex.Message}";
             return View(model);
         }
     }

@@ -76,6 +76,21 @@ public class KullaniciService(AppDbContext db, IMapper mapper) : IKullaniciServi
         return Result.Ok("Şifre güncellendi.");
     }
 
+    public async Task<Result> AdminSifreSifirlaAsync(int id, string yeniSifre)
+    {
+        if (string.IsNullOrWhiteSpace(yeniSifre))
+            return Result.Fail("Yeni şifre boş olamaz.");
+
+        var kullanici = await db.Kullanicilar.FindAsync(id);
+        if (kullanici is null)
+            return Result.Fail("Kullanıcı bulunamadı.");
+
+        kullanici.SifreHash = BCrypt.Net.BCrypt.HashPassword(yeniSifre);
+        await db.SaveChangesAsync();
+
+        return Result.Ok("Şifre sıfırlandı.");
+    }
+
     public async Task<Result> UpdateFcmTokenAsync(int id, string token)
     {
         var kullanici = await db.Kullanicilar.FindAsync(id);

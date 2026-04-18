@@ -15,6 +15,24 @@ public class KullanicilarController : Controller
         _apiService = apiService;
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Bloklar()
+    {
+        try
+        {
+            var result = await _apiService.GetAsync<ApiResult<List<BlokDto>>>("/api/blok");
+            return Json(new { success = true, data = result?.Data ?? new List<BlokDto>() });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Json(new { success = false, data = new List<BlokDto>() });
+        }
+        catch
+        {
+            return Json(new { success = false, data = new List<BlokDto>() });
+        }
+    }
+
     public async Task<IActionResult> Index()
     {
         try
@@ -81,4 +99,29 @@ public class KullanicilarController : Controller
             return Json(new { success = false, message = ex.Message });
         }
     }
+
+    [HttpPost]
+    public async Task<IActionResult> SifreSifirla(int id, [FromBody] SifreSifirlaRequest request)
+    {
+        try
+        {
+            await _apiService.PatchAsync<object>(
+                $"/api/kullanici/{id}/sifre-sifirla",
+                new { yeniSifre = request.YeniSifre });
+            return Json(new { success = true });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Json(new { success = false, message = "Oturum süresi doldu." });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+}
+
+public class SifreSifirlaRequest
+{
+    public string YeniSifre { get; set; } = string.Empty;
 }

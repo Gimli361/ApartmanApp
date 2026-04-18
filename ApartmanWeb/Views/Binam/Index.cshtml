@@ -1,0 +1,331 @@
+@model List<BlokDto>
+@{
+    ViewData["Title"] = "Bina Yönetimi";
+    int toplamDaire = Model.Sum(b => b.Daireler.Count);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0 fw-bold"><i class="bi bi-building me-2 text-primary"></i>Bina Yönetimi</h4>
+        <small class="text-muted">@Model.Count blok · @toplamDaire daire</small>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#blokEkleModal">
+        <i class="bi bi-plus-lg me-1"></i> Blok Ekle
+    </button>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-building fs-1 text-muted opacity-50"></i>
+            <p class="mt-3 text-muted">Henüz blok tanımlanmamış.</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#blokEkleModal">
+                <i class="bi bi-plus-lg me-1"></i> İlk Bloku Ekle
+            </button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3" id="blokKonteyner">
+        @foreach (var blok in Model)
+        {
+            <div class="col-md-6 col-xl-4" id="blok-kart-@blok.Id">
+                <div class="card h-100">
+                    <div class="card-header bg-white d-flex align-items-center justify-content-between py-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="bg-primary bg-opacity-10 rounded-2 d-flex align-items-center justify-content-center"
+                                 style="width:32px;height:32px;">
+                                <i class="bi bi-building text-primary small"></i>
+                            </div>
+                            <div>
+                                <span class="fw-bold">@blok.Ad Blok</span>
+                                <span class="badge bg-primary ms-2 daire-sayac-@blok.Id">@blok.Daireler.Count daire</span>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-primary"
+                                    onclick="openDaireEkle(@blok.Id, '@blok.Ad')"
+                                    title="Daire Ekle">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="blokSil(@blok.Id, '@blok.Ad')"
+                                    title="Bloğu Sil">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (blok.Daireler.Any())
+                        {
+                            <ul class="list-group list-group-flush daire-listesi-@blok.Id">
+                                @foreach (var d in blok.Daireler)
+                                {
+                                    <li class="list-group-item d-flex align-items-center justify-content-between py-2"
+                                        id="daire-@d.Id">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bi bi-door-open text-muted"></i>
+                                            <div>
+                                                <span class="fw-medium d-block lh-sm">Daire @d.DaireNo</span>
+                                                @if (d.Sakin != null)
+                                                {
+                                                    <span class="text-muted" style="font-size:0.78rem;">
+                                                        <i class="bi bi-person-fill me-1 text-primary" style="font-size:0.72rem;"></i>@d.Sakin.AdSoyad
+                                                        @if (d.Sakin.Rol == "Admin")
+                                                        {
+                                                            <span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">Yönetici</span>
+                                                        }
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted fst-italic" style="font-size:0.78rem;">Boş</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-sm btn-link text-danger p-0"
+                                                onclick="daireSil(@d.Id, '@d.DaireNo', @blok.Id)"
+                                                title="Daire Sil">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4 text-muted small daire-bos-@blok.Id">
+                                <i class="bi bi-door-closed d-block fs-4 mb-1 opacity-40"></i>
+                                Henüz daire eklenmemiş
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- Blok Ekle Modal -->
+<div class="modal fade" id="blokEkleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-building me-2 text-primary"></i>Blok Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Blok Adı <span class="zorunlu">*</span></label>
+                <div class="input-group">
+                    <input type="text" id="blokAdInput" class="form-control"
+                           placeholder="Örn: A, B, Kuzey..."
+                           maxlength="20"
+                           onkeydown="if(event.key==='Enter') blokEkle()">
+                    <span class="input-group-text text-muted">Blok</span>
+                </div>
+                <div id="blokEkleHata" class="alert alert-danger d-none mt-2 py-2 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="blokEkleBtn" onclick="blokEkle()">
+                    <i class="bi bi-plus-lg me-1"></i> Ekle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daire Ekle Modal -->
+<div class="modal fade" id="daireEkleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-door-open me-2 text-primary"></i>
+                    <span id="daireEkleBaslik">Daire Ekle</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="daireEkleBlokId">
+                <label class="form-label">Daire Numarası <span class="zorunlu">*</span></label>
+                <input type="text" id="daireNoInput" class="form-control"
+                       placeholder="Örn: 1, 2, 3A..."
+                       maxlength="10"
+                       onkeydown="if(event.key==='Enter') daireEkle()">
+                <div id="daireEkleHata" class="alert alert-danger d-none mt-2 py-2 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="daireEkleBtn" onclick="daireEkle()">
+                    <i class="bi bi-plus-lg me-1"></i> Ekle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// ─── Blok işlemleri ──────────────────────────────────────────────────────────
+
+function blokEkle() {
+    const ad = document.getElementById('blokAdInput').value.trim();
+    if (!ad) { showHata('blokEkleHata', 'Blok adı zorunludur.'); return; }
+
+    const btn = document.getElementById('blokEkleBtn');
+    setLoading(btn, true);
+
+    fetch('/Binam/BlokEkle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ad })
+    }).then(r => r.json()).then(res => {
+        setLoading(btn, false);
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('blokEkleModal')).hide();
+            toast(`${ad} Blok eklendi.`, 'success');
+            setTimeout(() => location.reload(), 700);
+        } else {
+            showHata('blokEkleHata', res.message || 'Bir hata oluştu.');
+        }
+    }).catch(() => { setLoading(btn, false); showHata('blokEkleHata', 'Sunucuya bağlanılamadı.'); });
+}
+
+function blokSil(id, ad) {
+    confirmDialog(`"${ad} Blok" ve tüm daireleri silinecek. Devam edilsin mi?`, () => {
+        fetch('/Binam/BlokSil?id=' + id, { method: 'DELETE' })
+        .then(r => r.json()).then(res => {
+            if (res.success) {
+                document.getElementById('blok-kart-' + id)?.remove();
+                toast(`${ad} Blok silindi.`, 'success');
+                if (!document.querySelector('#blokKonteyner .col-md-6')) location.reload();
+            } else {
+                toast(res.message || 'Silme başarısız.', 'danger');
+            }
+        });
+    });
+}
+
+// ─── Daire işlemleri ─────────────────────────────────────────────────────────
+
+let _aktifBlokId = null;
+
+function openDaireEkle(blokId, blokAd) {
+    _aktifBlokId = blokId;
+    document.getElementById('daireEkleBlokId').value = blokId;
+    document.getElementById('daireEkleBaslik').textContent = `${blokAd} Blok — Daire Ekle`;
+    document.getElementById('daireNoInput').value = '';
+    document.getElementById('daireEkleHata').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('daireEkleModal')).show();
+    setTimeout(() => document.getElementById('daireNoInput').focus(), 300);
+}
+
+function daireEkle() {
+    const blokId = parseInt(document.getElementById('daireEkleBlokId').value);
+    const daireNo = document.getElementById('daireNoInput').value.trim();
+    if (!daireNo) { showHata('daireEkleHata', 'Daire numarası zorunludur.'); return; }
+
+    const btn = document.getElementById('daireEkleBtn');
+    setLoading(btn, true);
+
+    fetch('/Binam/DaireEkle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blokId, daireNo })
+    }).then(r => r.json()).then(res => {
+        setLoading(btn, false);
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('daireEkleModal')).hide();
+            toast(`Daire ${daireNo} eklendi.`, 'success');
+            // Listeye DOM'da ekle
+            addDaireToDOM(blokId, res.daireId ?? 0, daireNo);
+        } else {
+            showHata('daireEkleHata', res.message || 'Bir hata oluştu.');
+        }
+    }).catch(() => { setLoading(btn, false); showHata('daireEkleHata', 'Sunucuya bağlanılamadı.'); });
+}
+
+function addDaireToDOM(blokId, daireId, daireNo) {
+    // Boş mesajı gizle
+    const bos = document.querySelector(`.daire-bos-${blokId}`);
+    if (bos) bos.remove();
+
+    // Mevcut liste ya da yeni liste
+    let liste = document.querySelector(`.daire-listesi-${blokId}`);
+    if (!liste) {
+        const kart = document.querySelector(`#blok-kart-${blokId} .card-body`);
+        liste = document.createElement('ul');
+        liste.className = `list-group list-group-flush daire-listesi-${blokId}`;
+        kart.appendChild(liste);
+    }
+
+    const li = document.createElement('li');
+    li.className = 'list-group-item d-flex align-items-center justify-content-between py-2';
+    li.id = `daire-${daireId}`;
+    li.innerHTML = `
+        <span><i class="bi bi-door-open text-muted me-2"></i><span class="fw-medium">Daire ${daireNo}</span></span>
+        <button class="btn btn-sm btn-link text-danger p-0" onclick="daireSil(${daireId}, '${daireNo}', ${blokId})" title="Daire Sil">
+            <i class="bi bi-x-lg"></i>
+        </button>`;
+    liste.appendChild(li);
+
+    // Sayaç güncelle
+    updateDaireSayac(blokId, 1);
+}
+
+function daireSil(id, daireNo, blokId) {
+    confirmDialog(`"Daire ${daireNo}" silinecek. Devam edilsin mi?`, () => {
+        fetch('/Binam/DaireSil?id=' + id, { method: 'DELETE' })
+        .then(r => r.json()).then(res => {
+            if (res.success) {
+                document.getElementById('daire-' + id)?.remove();
+                toast(`Daire ${daireNo} silindi.`, 'success');
+                updateDaireSayac(blokId, -1);
+                // Liste boşaldıysa mesaj göster
+                const liste = document.querySelector(`.daire-listesi-${blokId}`);
+                if (liste && !liste.querySelector('li')) {
+                    liste.remove();
+                    const kart = document.querySelector(`#blok-kart-${blokId} .card-body`);
+                    const bos = document.createElement('div');
+                    bos.className = `text-center py-4 text-muted small daire-bos-${blokId}`;
+                    bos.innerHTML = '<i class="bi bi-door-closed d-block fs-4 mb-1 opacity-40"></i>Henüz daire eklenmemiş';
+                    kart.appendChild(bos);
+                }
+            } else {
+                toast(res.message || 'Silme başarısız.', 'danger');
+            }
+        });
+    });
+}
+
+function updateDaireSayac(blokId, delta) {
+    const el = document.querySelector(`.daire-sayac-${blokId}`);
+    if (!el) return;
+    const current = parseInt(el.textContent) || 0;
+    el.textContent = (current + delta) + ' daire';
+}
+
+// ─── Yardımcılar ─────────────────────────────────────────────────────────────
+
+function showHata(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.remove('d-none');
+}
+
+function setLoading(btn, loading) {
+    btn.disabled = loading;
+    btn.innerHTML = loading
+        ? '<span class="spinner-border spinner-border-sm me-1"></span>'
+        : '<i class="bi bi-plus-lg me-1"></i> Ekle';
+}
+
+document.getElementById('blokEkleModal').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('blokAdInput').value = '';
+    document.getElementById('blokEkleHata').classList.add('d-none');
+});
+</script>
+}

@@ -5,4 +5,10 @@ abstract class BildirimRepository {
   Future<Result<List<BildirimModel>, AppError>> getBildirimler();
   Future<Result<int, AppError>> getUnreadCount();
   Future<Result<void, AppError>> markAsRead(int bildirimId);
+  Future<Result<void, AppError>> markAllAsRead();
+  Future<Result<void, AppError>> sendDuyuru(String baslik, String icerik);
+  Future<Result<void, AppError>> sendBlokBildirim(
+      String blokNo, String baslik, String icerik);
+  Future<Result<void, AppError>> sendDaireBildirim(
+      String daireNo, String baslik, String icerik, {String? blokNo});
 }

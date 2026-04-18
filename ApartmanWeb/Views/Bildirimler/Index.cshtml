@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Bildirimler";
     var okunmamisSayi = Model.Count(b => !b.Okundu);
+    var bloklar = (List<BlokDto>)(ViewBag.Bloklar ?? new List<BlokDto>());
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -16,8 +17,17 @@
         <small class="text-muted">Adminlere iletilen sistem bildirimleri</small>
     </div>
     <div class="d-flex gap-2">
+        @if (okunmamisSayi > 0)
+        {
+            <button class="btn btn-outline-secondary" id="tumuOkunduBtn" onclick="markAllAsRead()">
+                <i class="bi bi-check2-all me-1"></i> Tümünü Okundu İşaretle
+            </button>
+        }
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#duyuruModal">
             <i class="bi bi-megaphone me-1"></i> Genel Duyuru
+        </button>
+        <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#blokBildirimModal">
+            <i class="bi bi-building me-1"></i> Bloğa Bildirim
         </button>
         <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#daireBildirimModal">
             <i class="bi bi-house-door me-1"></i> Daireye Bildirim
@@ -33,16 +43,27 @@
             <div class="list-group list-group-flush" id="bildirimListesi">
                 @foreach (var b in Model.OrderByDescending(x => x.GonderimTarihi))
                 {
-                    <div class="list-group-item @(!b.Okundu ? "notification-unread" : "")" id="bildirim-@b.Id">
+                    <div class="list-group-item list-group-item-action @(!b.Okundu ? "notification-unread" : "")"
+                         id="bildirim-@b.Id"
+                         onclick="markAsRead(@b.Id)"
+                         style="cursor:pointer;">
                         <div class="d-flex align-items-start gap-3">
                             <div class="flex-shrink-0 mt-1">
-                                @if (b.Tip == "YeniAriza")
+                                @if (b.Tip == "YeniAriza" || b.Tip == "ArizaDurum")
                                 {
                                     <span class="badge bg-warning text-dark p-2"><i class="bi bi-tools"></i></span>
                                 }
                                 else if (b.Tip == "Duyuru")
                                 {
                                     <span class="badge bg-primary p-2"><i class="bi bi-megaphone"></i></span>
+                                }
+                                else if (b.Tip == "BlokMesaj")
+                                {
+                                    <span class="badge bg-warning text-dark p-2"><i class="bi bi-building"></i></span>
+                                }
+                                else if (b.Tip == "DaireMesaj")
+                                {
+                                    <span class="badge bg-success p-2"><i class="bi bi-house-door"></i></span>
                                 }
                                 else
                                 {
@@ -62,15 +83,12 @@
                                         @b.GonderimTarihi.ToString("dd.MM.yyyy HH:mm")
                                     </small>
                                 </div>
-                                <p class="mb-0 small text-muted text-truncate">@b.Icerik</p>
+                                <p class="mb-0 small text-muted">@b.Icerik</p>
                             </div>
                             @if (!b.Okundu)
                             {
-                                <div class="flex-shrink-0">
-                                    <button class="btn btn-sm btn-outline-success" title="Okundu olarak işaretle"
-                                            onclick="markAsRead(@b.Id)">
-                                        <i class="bi bi-check2"></i>
-                                    </button>
+                                <div class="flex-shrink-0 align-self-center">
+                                    <span class="badge rounded-pill bg-primary" style="width:10px;height:10px;padding:0;display:inline-block;"></span>
                                 </div>
                             }
                         </div>
@@ -124,6 +142,52 @@
     </div>
 </div>
 
+<!-- Bloğa Bildirim Modal -->
+<div class="modal fade" id="blokBildirimModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-building me-2 text-warning"></i>Bloğa Bildirim Gönder
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning py-2 small mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Seçilen bloktaki tüm sakinlere bildirim gönderilecektir.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Blok <span class="zorunlu">*</span></label>
+                    <select id="blokBildirimBlokNo" class="form-select">
+                        <option value="">-- Blok Seçin --</option>
+                        @foreach (var blok in bloklar)
+                        {
+                            <option value="@blok.Ad">@blok.Ad Blok</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Başlık <span class="zorunlu">*</span></label>
+                    <input type="text" id="blokBildirimBaslik" class="form-control" placeholder="Bildirim başlığı..." maxlength="100">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">İçerik <span class="zorunlu">*</span></label>
+                    <textarea id="blokBildirimIcerik" class="form-control" rows="4"
+                              placeholder="Bildirim metni..." maxlength="500"></textarea>
+                </div>
+                <div id="blokBildirimHata" class="alert alert-danger d-none py-2 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-warning" id="blokGonderBtn" onclick="sendBlockNotif()">
+                    <i class="bi bi-send me-1"></i> Bloğa Gönder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Daireye Bildirim Modal -->
 <div class="modal fade" id="daireBildirimModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -135,10 +199,32 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Daire No <span class="zorunlu">*</span></label>
-                    <input type="text" id="daireBildirimDaireNo" class="form-control"
-                           placeholder="Örn: A1, 3B, 15...">
+                <div class="row g-2 mb-3">
+                    <div class="col-5">
+                        <label class="form-label">Blok <small class="text-muted">(opsiyonel)</small></label>
+                        <select id="daireBildirimBlokNo" class="form-select" onchange="onDaireBlokChange()">
+                            <option value="">-- Tüm Bloklar --</option>
+                            @foreach (var blok in bloklar)
+                            {
+                                <option value="@blok.Ad">@blok.Ad Blok</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-7">
+                        <label class="form-label">Daire <span class="zorunlu">*</span></label>
+                        <select id="daireBildirimDaireNo" class="form-select">
+                            <option value="">-- Daire Seçin --</option>
+                            @foreach (var blok in bloklar)
+                            {
+                                foreach (var daire in blok.Daireler)
+                                {
+                                    <option value="@daire.DaireNo" data-blok="@blok.Ad">
+                                        @blok.Ad - @daire.DaireNo
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Başlık <span class="zorunlu">*</span></label>
@@ -163,24 +249,65 @@
 
 @section Scripts {
 <script>
+// Blok seçilince daire dropdown'ını filtrele
+function onDaireBlokChange() {
+    const blokNo = document.getElementById('daireBildirimBlokNo').value;
+    const daireSelect = document.getElementById('daireBildirimDaireNo');
+    daireSelect.value = '';
+    Array.from(daireSelect.options).forEach(opt => {
+        if (!opt.value) return; // placeholder
+        opt.hidden = blokNo !== '' && opt.dataset.blok !== blokNo;
+    });
+}
+
 function markAsRead(id) {
+    const el = document.getElementById('bildirim-' + id);
+    if (!el || !el.classList.contains('notification-unread')) return;
+
     fetch('/Bildirimler/OkunduIsaretle?id=' + id, { method: 'POST' })
     .then(r => r.json()).then(res => {
         if (res.success) {
-            const el = document.getElementById('bildirim-' + id);
-            if (el) {
-                el.classList.remove('notification-unread');
-                el.querySelector('.badge.bg-primary[style]')?.remove();
-                el.querySelector('button[onclick]')?.remove();
-            }
-            const badge = document.querySelector('.badge.bg-danger');
-            if (badge) {
-                const count = parseInt(badge.textContent) - 1;
-                if (count <= 0) badge.remove();
-                else badge.textContent = count + ' yeni';
-            }
-        } else toast(res.message, 'danger');
+            el.classList.remove('notification-unread');
+            el.querySelector('.badge.bg-primary.me-1')?.remove();
+            el.querySelector('.rounded-pill')?.remove();
+            el.querySelector('h6')?.classList.replace('text-dark', 'text-secondary');
+            updateUnreadBadge(-1);
+        }
     });
+}
+
+function markAllAsRead() {
+    const btn = document.getElementById('tumuOkunduBtn');
+    if (btn) btn.disabled = true;
+
+    fetch('/Bildirimler/TumuOkundu', { method: 'POST' })
+    .then(r => r.json()).then(res => {
+        if (res.success) {
+            document.querySelectorAll('.notification-unread').forEach(el => {
+                el.classList.remove('notification-unread');
+                el.querySelector('.badge.bg-primary.me-1')?.remove();
+                el.querySelector('.rounded-pill')?.remove();
+                el.querySelector('h6')?.classList.replace('text-dark', 'text-secondary');
+            });
+            document.querySelector('.badge.bg-danger')?.remove();
+            if (btn) btn.remove();
+            toast('Tüm bildirimler okundu işaretlendi.', 'success');
+        }
+    }).catch(() => {
+        if (btn) btn.disabled = false;
+    });
+}
+
+function updateUnreadBadge(delta) {
+    const badge = document.querySelector('.badge.bg-danger');
+    if (!badge) return;
+    const count = parseInt(badge.textContent) + delta;
+    if (count <= 0) {
+        badge.remove();
+        document.getElementById('tumuOkunduBtn')?.remove();
+    } else {
+        badge.textContent = count + ' yeni';
+    }
 }
 
 function sendAnnouncement() {
@@ -194,35 +321,71 @@ function sendAnnouncement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ baslik: title, icerik: content })
     }).then(r => r.json()).then(res => {
+        setLoading('duyuruGonderBtn', 'Tüm Sakinlere Gönder', false, 'bi-send');
         if (res.success) {
             bootstrap.Modal.getInstance(document.getElementById('duyuruModal')).hide();
             toast('Duyuru tüm sakinlere gönderildi.', 'success');
         } else {
             showError('duyuruHata', res.message || 'Gönderim başarısız.');
-            setLoading('duyuruGonderBtn', 'Tüm Sakinlere Gönder', false, 'bi-send');
         }
+    }).catch(() => {
+        setLoading('duyuruGonderBtn', 'Tüm Sakinlere Gönder', false, 'bi-send');
+        showError('duyuruHata', 'Sunucuya bağlanılamadı.');
+    });
+}
+
+function sendBlockNotif() {
+    const blokNo = document.getElementById('blokBildirimBlokNo').value;
+    const title = document.getElementById('blokBildirimBaslik').value.trim();
+    const content = document.getElementById('blokBildirimIcerik').value.trim();
+    if (!blokNo || !title || !content) { showError('blokBildirimHata', 'Tüm alanlar zorunludur.'); return; }
+
+    setLoading('blokGonderBtn', 'Gönderiliyor...', true);
+    fetch('/Bildirimler/BlokBildirim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blokNo, baslik: title, icerik: content })
+    }).then(r => r.json()).then(res => {
+        setLoading('blokGonderBtn', 'Bloğa Gönder', false, 'bi-send');
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('blokBildirimModal')).hide();
+            toast(`${blokNo} bloğundaki sakinlere bildirim gönderildi.`, 'success');
+        } else {
+            showError('blokBildirimHata', res.message || 'Gönderim başarısız.');
+        }
+    }).catch(() => {
+        setLoading('blokGonderBtn', 'Bloğa Gönder', false, 'bi-send');
+        showError('blokBildirimHata', 'Sunucuya bağlanılamadı.');
     });
 }
 
 function sendApartmentNotif() {
-    const aptNo = document.getElementById('daireBildirimDaireNo').value.trim();
+    const blokNo = document.getElementById('daireBildirimBlokNo').value;
+    const aptNo = document.getElementById('daireBildirimDaireNo').value;
     const title = document.getElementById('daireBildirimBaslik').value.trim();
     const content = document.getElementById('daireBildirimIcerik').value.trim();
-    if (!aptNo || !title || !content) { showError('daireBildirimHata', 'Tüm alanlar zorunludur.'); return; }
+    if (!aptNo || !title || !content) { showError('daireBildirimHata', 'Daire, başlık ve içerik zorunludur.'); return; }
+
+    const payload = { daireNo: aptNo, baslik: title, icerik: content };
+    if (blokNo) payload.blokNo = blokNo;
 
     setLoading('daireGonderBtn', 'Gönderiliyor...', true);
     fetch('/Bildirimler/DaireBildirim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ daireNo: aptNo, baslik: title, icerik: content })
+        body: JSON.stringify(payload)
     }).then(r => r.json()).then(res => {
+        setLoading('daireGonderBtn', 'Gönder', false, 'bi-send');
         if (res.success) {
             bootstrap.Modal.getInstance(document.getElementById('daireBildirimModal')).hide();
-            toast(`Daire ${aptNo}'e bildirim gönderildi.`, 'success');
+            const hedef = blokNo ? `${blokNo} Blok ${aptNo}` : aptNo;
+            toast(`${hedef} dairesine bildirim gönderildi.`, 'success');
         } else {
             showError('daireBildirimHata', res.message || 'Gönderim başarısız.');
-            setLoading('daireGonderBtn', 'Gönder', false, 'bi-send');
         }
+    }).catch(() => {
+        setLoading('daireGonderBtn', 'Gönder', false, 'bi-send');
+        showError('daireBildirimHata', 'Sunucuya bağlanılamadı.');
     });
 }
 
@@ -240,11 +403,14 @@ function setLoading(btnId, label, loading, icon = '') {
         : `<i class="bi ${icon} me-1"></i> ${label}`;
 }
 
-// Reset modals on close
-['duyuruModal', 'daireBildirimModal'].forEach(id => {
+// Modal kapanınca formu sıfırla
+['duyuruModal', 'blokBildirimModal', 'daireBildirimModal'].forEach(id => {
     document.getElementById(id)?.addEventListener('hidden.bs.modal', () => {
         document.querySelectorAll(`#${id} input, #${id} textarea`).forEach(el => el.value = '');
+        document.querySelectorAll(`#${id} select`).forEach(el => el.value = '');
         document.querySelectorAll(`#${id} .alert`).forEach(el => el.classList.add('d-none'));
+        // Daire modal kapanınca daire listesini sıfırla
+        if (id === 'daireBildirimModal') onDaireBlokChange();
     });
 });
 </script>

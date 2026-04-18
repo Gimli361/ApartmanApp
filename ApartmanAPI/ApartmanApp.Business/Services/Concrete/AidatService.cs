@@ -59,6 +59,11 @@ public class AidatService(AppDbContext db, IMapper mapper) : IAidatService
         if (kullanici is null)
             return Result<AidatListDto>.Fail("Kullanıcı bulunamadı.");
 
+        var duplikat = await db.Aidatlar.AnyAsync(a =>
+            a.KullaniciId == dto.KullaniciId && a.Ay == dto.Ay && a.Yil == dto.Yil);
+        if (duplikat)
+            return Result<AidatListDto>.Fail($"Bu kullanıcı için {dto.Ay}/{dto.Yil} dönemi aidat kaydı zaten mevcut.");
+
         var aidat = new Aidat
         {
             KullaniciId = dto.KullaniciId,

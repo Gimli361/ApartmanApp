@@ -1,12 +1,14 @@
 using ApartmanApp.Business.DTOs.Ariza;
 using ApartmanApp.Business.Services.Abstract;
 using ApartmanApp.Business.Validators;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApartmanApp.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ArizaController(IArizaService arizaService) : ControllerBase
 {
     [HttpGet]
@@ -41,6 +43,7 @@ public class ArizaController(IArizaService arizaService) : ControllerBase
     }
 
     [HttpPatch("{id:int}/durum")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateDurum(int id, [FromBody] ArizaDurumGuncelleDto dto)
     {
         var result = await arizaService.UpdateDurumAsync(id, dto);
@@ -50,6 +53,7 @@ public class ArizaController(IArizaService arizaService) : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await arizaService.DeleteAsync(id);

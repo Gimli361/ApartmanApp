@@ -1,10 +1,12 @@
 using ApartmanApp.Business.Services.Abstract;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApartmanApp.API.Controllers;
 
 [ApiController]
 [Route("api/ariza/{arizaId:int}/foto")]
+[Authorize]
 public class FotoController(IFotoService fotoService) : ControllerBase
 {
     [HttpGet]
@@ -27,6 +29,7 @@ public class FotoController(IFotoService fotoService) : ControllerBase
     }
 
     [HttpDelete("{fotoId:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int arizaId, int fotoId)
     {
         var result = await fotoService.DeleteAsync(fotoId);

@@ -6,7 +6,7 @@ namespace ApartmanApp.Business.Services.Concrete;
 
 public class FcmService(ILogger<FcmService> logger) : IFcmService
 {
-    public async Task SendAsync(string? fcmToken, string baslik, string icerik)
+    public async Task SendAsync(string? fcmToken, string baslik, string icerik, string? tip = null)
     {
         if (string.IsNullOrWhiteSpace(fcmToken))
             return;
@@ -20,6 +20,10 @@ public class FcmService(ILogger<FcmService> logger) : IFcmService
                 {
                     Title = baslik,
                     Body = icerik,
+                },
+                Data = new Dictionary<string, string>
+                {
+                    { "tip", tip ?? "" },
                 },
                 Android = new AndroidConfig
                 {

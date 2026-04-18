@@ -8,6 +8,9 @@ import '../../../features/auth/domain/user_model.dart';
 import 'ariza_helpers.dart';
 import 'providers/ariza_provider.dart';
 
+/// Sakin için basit iki seçenekli filtre
+enum _SakinFiltresi { tumu, acik, gecmis }
+
 class ArizaListScreen extends ConsumerStatefulWidget {
   const ArizaListScreen({super.key});
 
@@ -17,11 +20,15 @@ class ArizaListScreen extends ConsumerStatefulWidget {
 
 class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
     with SingleTickerProviderStateMixin {
-  ArizaDurum? _filter;
+  // Admin filtreleri
+  ArizaDurum? _adminDurumFilter;
   bool _takipFiltresi = false;
-  String? _blokFilter; // admin için seçili blok
+  String? _blokFilter;
   late TabController _tabController;
   int _currentTab = 0;
+
+  // Sakin filtresi
+  _SakinFiltresi _sakinFilter = _SakinFiltresi.tumu;
 
   @override
   void initState() {
@@ -49,36 +56,42 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
     final isAdmin = user?.rol == UserRole.admin;
     final userId = user?.id ?? 0;
     final blokNo = user?.blokNo;
-    final showBlokTab = !isAdmin && blokNo != null && blokNo.isNotEmpty;
 
-    // Tüm arızalar sekmesi için filtrelenmiş liste
+    if (isAdmin) {
+      return _buildAdminView(context, arizaState, userId);
+    } else {
+      return _buildSakinView(context, arizaState, userId, blokNo);
+    }
+  }
+
+  // ── Admin görünümü ────────────────────────────────────────────────────────
+
+  Widget _buildAdminView(
+    BuildContext context,
+    ArizaListState arizaState,
+    int userId,
+  ) {
+    final bloklar = arizaState.arizalar
+        .map((a) => a.blokNo)
+        .whereType<String>()
+        .toSet()
+        .toList()
+      ..sort();
+
     final arizalar = arizaState.arizalar.where((a) {
-      if (_filter != null && a.durum != _filter) return false;
+      if (_adminDurumFilter != null && a.durum != _adminDurumFilter) {
+        return false;
+      }
       if (_takipFiltresi && !a.kullaniciTakipEdiyor) return false;
       if (_blokFilter != null && a.blokNo != _blokFilter) return false;
       return true;
     }).toList();
 
-    // Sakin blok sekmesi: aynı provider'dan yerel filtre — sıfır API maliyeti
-    final blokArizalar = showBlokTab
-        ? arizaState.arizalar.where((a) => a.blokNo == blokNo).toList()
-        : <ArizaModel>[];
-
-    // Admin için mevcut blok listesi (dinamik — veriden türetilir)
-    final bloklar = isAdmin
-        ? (arizaState.arizalar
-                .map((a) => a.blokNo)
-                .whereType<String>()
-                .toSet()
-                .toList()
-              ..sort())
-        : <String>[];
-
     return Scaffold(
       body: Column(
         children: [
-          // ── Admin: Blok filtre çipleri ──────────────────────────────────
-          if (isAdmin && bloklar.isNotEmpty)
+          // Blok filtre çipleri
+          if (bloklar.isNotEmpty)
             SizedBox(
               height: 48,
               child: ListView(
@@ -96,109 +109,51 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
                         selected: _blokFilter == b,
                         color: Theme.of(context).colorScheme.secondary,
                         icon: Icons.apartment,
-                        onTap: () =>
-                            setState(() => _blokFilter = _blokFilter == b ? null : b),
+                        onTap: () => setState(
+                            () => _blokFilter = _blokFilter == b ? null : b),
                       )),
                 ],
               ),
             ),
 
-          // ── Sakin: Sekme çubuğu ─────────────────────────────────────────
-          if (showBlokTab)
-            TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(text: 'Tüm Arızalar'),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Blok Arızaları'),
-                      SizedBox(width: 4),
-                      Icon(Icons.apartment, size: 14),
-                    ],
-                  ),
+          // Durum + takip filtre çipleri
+          SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              children: [
+                _FilterChip(
+                  label: 'Tümü',
+                  selected: _adminDurumFilter == null && !_takipFiltresi,
+                  onTap: () => setState(() {
+                    _adminDurumFilter = null;
+                    _takipFiltresi = false;
+                  }),
                 ),
+                ...ArizaDurum.values.map((d) => _FilterChip(
+                      label: d.label,
+                      selected: _adminDurumFilter == d,
+                      color: durumColor(d),
+                      onTap: () => setState(() =>
+                          _adminDurumFilter =
+                              _adminDurumFilter == d ? null : d),
+                    )),
               ],
             ),
-
-          // ── Durum + takip filtre çipleri ────────────────────────────────
-          // Sakin'in blok sekmesinde gösterilmez
-          if (!showBlokTab || _currentTab == 0)
-            SizedBox(
-              height: 48,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                children: [
-                  _FilterChip(
-                    label: 'Tümü',
-                    selected: _filter == null && !_takipFiltresi,
-                    onTap: () => setState(() {
-                      _filter = null;
-                      _takipFiltresi = false;
-                    }),
-                  ),
-                  if (!isAdmin)
-                    _FilterChip(
-                      label: 'Takip Ettiklerim',
-                      selected: _takipFiltresi,
-                      color: Theme.of(context).colorScheme.primary,
-                      icon: Icons.notifications_active,
-                      onTap: () => setState(() {
-                        _takipFiltresi = !_takipFiltresi;
-                        _filter = null;
-                      }),
-                    ),
-                  ...ArizaDurum.values.map((d) => _FilterChip(
-                        label: d.label,
-                        selected: _filter == d,
-                        color: durumColor(d),
-                        onTap: () =>
-                            setState(() => _filter = _filter == d ? null : d),
-                      )),
-                ],
-              ),
-            ),
+          ),
 
           const Divider(height: 1),
 
-          // ── Liste ────────────────────────────────────────────────────────
           Expanded(
-            child: showBlokTab
-                ? TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _ArizaListView(
-                        arizaState: arizaState,
-                        arizalar: arizalar,
-                        isAdmin: isAdmin,
-                        userId: userId,
-                        onDelete: _confirmDelete,
-                        onRefresh: _load,
-                      ),
-                      // Blok sekmesi: aynı provider, yerel filtre
-                      _ArizaListView(
-                        arizaState: arizaState,
-                        arizalar: blokArizalar,
-                        isAdmin: false,
-                        userId: userId,
-                        onDelete: null,
-                        onRefresh: _load,
-                        emptyMessage: 'Bloğunuzda aktif arıza kaydı yok.',
-                        emptyIcon: Icons.apartment_outlined,
-                      ),
-                    ],
-                  )
-                : _ArizaListView(
-                    arizaState: arizaState,
-                    arizalar: arizalar,
-                    isAdmin: isAdmin,
-                    userId: userId,
-                    onDelete: _confirmDelete,
-                    onRefresh: _load,
-                  ),
+            child: _ArizaListView(
+              arizaState: arizaState,
+              arizalar: arizalar,
+              isAdmin: true,
+              userId: userId,
+              onDelete: _confirmDelete,
+              onRefresh: _load,
+            ),
           ),
         ],
       ),
@@ -219,6 +174,99 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
             label: const Text('Arıza Bildir'),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Sakin görünümü ────────────────────────────────────────────────────────
+
+  Widget _buildSakinView(
+    BuildContext context,
+    ArizaListState arizaState,
+    int userId,
+    String? blokNo,
+  ) {
+    // Sakin listesi: kendi bloğu + ortak alan (blokNo == null)
+    final listeTemel = arizaState.arizalar.where((a) {
+      final ayniBlok = blokNo != null && a.blokNo == blokNo;
+      final ortakAlan = a.blokNo == null || a.blokNo!.isEmpty;
+      return ayniBlok || ortakAlan;
+    }).toList();
+
+    final arizalar = listeTemel.where((a) {
+      switch (_sakinFilter) {
+        case _SakinFiltresi.acik:
+          return a.durum == ArizaDurum.beklemede ||
+              a.durum == ArizaDurum.inceleniyor;
+        case _SakinFiltresi.gecmis:
+          return a.durum == ArizaDurum.tamamlandi ||
+              a.durum == ArizaDurum.reddedildi;
+        case _SakinFiltresi.tumu:
+          return true;
+      }
+    }).toList();
+
+    return Scaffold(
+      body: Column(
+        children: [
+          // Basit iki çip: Açık / Geçmiş
+          SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              children: [
+                _FilterChip(
+                  label: 'Tümü',
+                  selected: _sakinFilter == _SakinFiltresi.tumu,
+                  onTap: () =>
+                      setState(() => _sakinFilter = _SakinFiltresi.tumu),
+                ),
+                _FilterChip(
+                  label: 'Açık Arızalar',
+                  selected: _sakinFilter == _SakinFiltresi.acik,
+                  color: Colors.orange,
+                  icon: Icons.pending_outlined,
+                  onTap: () =>
+                      setState(() => _sakinFilter = _SakinFiltresi.acik),
+                ),
+                _FilterChip(
+                  label: 'Geçmiş',
+                  selected: _sakinFilter == _SakinFiltresi.gecmis,
+                  color: Colors.green,
+                  icon: Icons.check_circle_outline,
+                  onTap: () =>
+                      setState(() => _sakinFilter = _SakinFiltresi.gecmis),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
+          Expanded(
+            child: _ArizaListView(
+              arizaState: arizaState,
+              arizalar: arizalar,
+              isAdmin: false,
+              userId: userId,
+              onDelete: null,
+              onRefresh: _load,
+              emptyMessage: _sakinFilter == _SakinFiltresi.gecmis
+                  ? 'Geçmiş arıza kaydı bulunamadı.'
+                  : _sakinFilter == _SakinFiltresi.acik
+                      ? 'Aktif arıza kaydı yok.'
+                      : 'Henüz arıza kaydı yok.',
+            ),
+          ),
+        ],
+      ),
+      // Sakin için sadece tek FAB: refresh yok, pull-to-refresh kullanılır
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'add',
+        onPressed: () => context.push('/ana-sayfa/arizalar/yeni'),
+        icon: const Icon(Icons.add),
+        label: const Text('Arıza Bildir'),
       ),
     );
   }
@@ -258,7 +306,6 @@ class _ArizaListView extends ConsumerWidget {
   final Future<void> Function(ArizaModel)? onDelete;
   final VoidCallback onRefresh;
   final String emptyMessage;
-  final IconData emptyIcon;
 
   const _ArizaListView({
     required this.arizaState,
@@ -268,7 +315,6 @@ class _ArizaListView extends ConsumerWidget {
     required this.onDelete,
     required this.onRefresh,
     this.emptyMessage = 'Henüz arıza kaydı yok.',
-    this.emptyIcon = Icons.handyman_outlined,
   });
 
   @override
@@ -287,7 +333,7 @@ class _ArizaListView extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(emptyIcon, size: 48, color: Colors.grey),
+            const Icon(Icons.handyman_outlined, size: 48, color: Colors.grey),
             const SizedBox(height: 12),
             Text(emptyMessage,
                 style: const TextStyle(color: Colors.grey, fontSize: 15)),
@@ -308,9 +354,8 @@ class _ArizaListView extends ConsumerWidget {
             ariza: ariza,
             isAdmin: isAdmin,
             userId: userId,
-            onDelete: isAdmin && onDelete != null
-                ? () => onDelete!(ariza)
-                : null,
+            onDelete:
+                isAdmin && onDelete != null ? () => onDelete!(ariza) : null,
             onTap: () => context.push('/ana-sayfa/arizalar/${ariza.id}'),
           );
         },
@@ -343,6 +388,17 @@ class _ArizaCard extends ConsumerWidget {
     final arizaState = ref.watch(arizaListProvider);
     final takipYukleniyor = arizaState.loadingTakipIds.contains(ariza.id);
     final takipGoster = !isAdmin;
+
+    // Bildiren gösterimi: admin tam bilgi görür, sakin gizlilik kuralına tabi
+    final String bildirenLabel;
+    if (isAdmin) {
+      bildirenLabel =
+          '${ariza.bildirenDaireNo} · ${ariza.bildirenAdSoyad}';
+    } else if (ariza.bildirenId == userId) {
+      bildirenLabel = 'Sen';
+    } else {
+      bildirenLabel = 'Bina Sakini';
+    }
 
     return Dismissible(
       key: ValueKey(ariza.id),
@@ -387,7 +443,8 @@ class _ArizaCard extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    _PriorityBadge(oncelik: ariza.oncelik),
+                    // Öncelik rozeti yalnızca admin'e gösterilir
+                    if (isAdmin) _PriorityBadge(oncelik: ariza.oncelik),
                     if (takipGoster) ...[
                       const SizedBox(width: 4),
                       GestureDetector(
@@ -462,9 +519,8 @@ class _ArizaCard extends ConsumerWidget {
                         size: 13, color: Colors.grey[500]),
                     const SizedBox(width: 3),
                     Text(
-                      '${ariza.bildirenDaireNo} · ${ariza.bildirenAdSoyad}',
-                      style:
-                          TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      bildirenLabel,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                     ),
                   ],
                 ),

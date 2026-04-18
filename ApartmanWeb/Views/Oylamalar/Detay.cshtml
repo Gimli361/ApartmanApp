@@ -1,0 +1,167 @@
+@model OylamaDetailDto
+@{
+    ViewData["Title"] = Model.Baslik;
+}
+
+<div class="mb-4">
+    <a href="/Oylamalar" class="btn btn-outline-secondary btn-sm mb-3">
+        <i class="bi bi-arrow-left me-1"></i>Geri
+    </a>
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h4 class="fw-bold mb-1">@Model.Baslik</h4>
+            @if (!string.IsNullOrEmpty(Model.Aciklama))
+            {
+                <p class="text-muted">@Model.Aciklama</p>
+            }
+        </div>
+        @if (!Model.AktifMi)
+        {
+            <span class="badge bg-secondary fs-6">Pasif</span>
+        }
+        else if (Model.SuresiDoldu)
+        {
+            <span class="badge bg-warning text-dark fs-6">Süresi Doldu</span>
+        }
+        else
+        {
+            <span class="badge bg-success fs-6">Açık</span>
+        }
+    </div>
+    <div class="d-flex gap-3 text-muted small">
+        <span><i class="bi bi-calendar me-1"></i>Başlangıç: @Model.BaslangicTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+        <span><i class="bi bi-clock me-1"></i>Bitiş: @Model.BitisTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+        <span><i class="bi bi-how-to-vote me-1"></i>@Model.ToplamOySayisi toplam oy</span>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                @if (Model.KullaniciOyKullandi)
+                {
+                    <div class="alert alert-success d-flex align-items-center gap-2 py-2">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Oyunuzu kullandınız.</span>
+                        @if (Model.AcikMi)
+                        {
+                            <button class="btn btn-outline-warning btn-sm ms-auto" onclick="oyGeriAl(@Model.Id)">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>Oy Geri Al
+                            </button>
+                        }
+                    </div>
+                }
+                else if (Model.AcikMi)
+                {
+                    <div class="alert alert-info d-flex align-items-center gap-2 py-2">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <span>Oy kullanabilirsiniz.</span>
+                    </div>
+                }
+
+                <div id="seceneklerListesi">
+                    @foreach (var s in Model.Secenekler)
+                    {
+                        var isVoted = Model.KullaniciSecenekId == s.Id;
+                        <div class="mb-3 p-3 border rounded @(isVoted ? "border-success bg-success bg-opacity-10" : "")">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                @if (!Model.KullaniciOyKullandi && Model.AcikMi)
+                                {
+                                    <input class="form-check-input flex-shrink-0"
+                                           type="radio"
+                                           name="secenek"
+                                           value="@s.Id"
+                                           id="s@(s.Id)" />
+                                }
+                                else if (isVoted)
+                                {
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-circle text-muted"></i>
+                                }
+                                <label class="form-check-label fw-semibold flex-grow-1" for="s@(s.Id)">
+                                    @s.Metin
+                                </label>
+                                <span class="text-muted small">@s.OySayisi oy</span>
+                            </div>
+                            <div class="progress" style="height:8px;">
+                                <div class="progress-bar @(isVoted ? "bg-success" : "")"
+                                     style="width:@s.OranYuzde.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%">
+                                </div>
+                            </div>
+                            <div class="text-muted small mt-1">%@s.OranYuzde.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)</div>
+                        </div>
+                    }
+                </div>
+
+                @if (!Model.KullaniciOyKullandi && Model.AcikMi)
+                {
+                    <button class="btn btn-primary" onclick="oyVer(@Model.Id)">
+                        <i class="bi bi-how-to-vote me-1"></i>Oy Ver
+                    </button>
+                }
+
+                <div id="oyHata" class="text-danger small mt-2 d-none"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 mt-3 mt-lg-0">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3">Yönetim</h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="toggleOylama(@Model.Id)">
+                        <i class="bi bi-@(Model.AktifMi ? "pause" : "play") me-1"></i>
+                        @(Model.AktifMi ? "Pasif Et" : "Aktif Et")
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="silOylama(@Model.Id)">
+                        <i class="bi bi-trash me-1"></i>Oylama Sil
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+async function oyVer(oylamaId) {
+    const secilen = document.querySelector('input[name="secenek"]:checked');
+    const hata = document.getElementById('oyHata');
+    if (!secilen) { hata.textContent = 'Lütfen bir seçenek seçin.'; hata.classList.remove('d-none'); return; }
+    hata.classList.add('d-none');
+
+    const res = await fetch(`/Oylamalar/OyVer/${oylamaId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secenekId: parseInt(secilen.value) })
+    });
+    const json = await res.json();
+    if (json.success) location.reload();
+    else { hata.textContent = json.message || 'Hata oluştu.'; hata.classList.remove('d-none'); }
+}
+
+async function oyGeriAl(oylamaId) {
+    if (!confirm('Oyunuzu geri almak istediğinize emin misiniz?')) return;
+    const res = await fetch(`/Oylamalar/OyGeriAl/${oylamaId}`, { method: 'POST' });
+    const json = await res.json();
+    if (json.success) location.reload();
+}
+
+async function toggleOylama(id) {
+    const res = await fetch(`/Oylamalar/Toggle/${id}`, { method: 'POST' });
+    const json = await res.json();
+    if (json.success) location.reload();
+}
+
+async function silOylama(id) {
+    if (!confirm('Bu oylama silinecek. Emin misiniz?')) return;
+    const res = await fetch(`/Oylamalar/Sil/${id}`, { method: 'POST' });
+    const json = await res.json();
+    if (json.success) window.location.href = '/Oylamalar';
+}
+</script>
+}
