@@ -15,6 +15,15 @@ ApartmanAPI/ApartmanApp.API/appsettings.json
 **/*firebase-adminsdk*.json
 **/firebase*.json
 
+# Kullanıcı yüklediği arıza fotoğrafları (runtime data, deployment'ta ayrı volume)
+ApartmanAPI/ApartmanApp.API/wwwroot/uploads/
+
+# Serilog runtime logları
+ApartmanAPI/ApartmanApp.API/logs/
+
+# Claude Code kullanıcı ayarları (kişisel)
+.claude/settings.local.json
+
 # ── Flutter / Dart ───────────────────────────────────────────────────
 **/.dart_tool/
 **/.flutter-plugins-dependencies

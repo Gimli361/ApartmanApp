@@ -120,16 +120,24 @@ _Son güncelleme: 2026-04-12_
 
 ---
 
-### 🟢 6. Oylama Modülü — Düşük Öncelik
+### ✅ 6. Oylama Modülü — TAMAMLANDI
 
-**Sorun:** Tamamen yok, kompleks veri modeli gerektiriyor.
-
-**Yapılacaklar:**
-- [ ] Entity'ler: `Oylama`, `OylamaSenegi`, `OylamaOyu`
-- [ ] Migration oluştur ve uygula
-- [ ] DTO'lar + Servis + Controller
-- [ ] Bir kullanıcı aynı oylamaya birden fazla oy kullanamaz (unique constraint)
-- [ ] Flutter: `OylamaListScreen`, `OylamaDetailScreen`
+- [x] Entity'ler: `Oylama`, `OylamaSecenek`, `OylamaOyu`
+- [x] Configurations: `OylamaConfiguration`, `OylamaSecenekConfiguration`, `OylamaOyuConfiguration`
+- [x] `AddOylama` migration oluşturuldu (DB açıkken API başlayınca otomatik uygulanır)
+- [x] DTO'lar: `OylamaListDto`, `OylamaDetailDto`, `OylamaCreateDto`, `OyVerDto`
+- [x] `IOylamaService` / `OylamaService` — GetAll, GetById, Create, OyVer, OyGeriAl, Delete, ToggleAktif
+- [x] `OylamaController` — 7 endpoint, JWT korumalı, Create/Toggle/Delete admin-only
+- [x] Unique constraint: bir kullanıcı aynı oylamaya sadece bir kez oy verebilir
+- [x] Flutter: `OylamaModel`, `OylamaDetailModel`, `OylamaSecenekModel` (fromJson ile)
+- [x] Flutter: `OylamaRepository` abstract + `OylamaRepositoryImpl`
+- [x] Flutter: `oylamaListProvider`, `oylamaDetailProvider.family`
+- [x] Flutter: `OylamaListScreen` (liste, kart, toggle/sil admin aksiyonları)
+- [x] Flutter: `OylamaDetailScreen` (seçenekler, oy ver, oy geri al, progress bar)
+- [x] Flutter: `OylamaCreateScreen` (admin, dinamik seçenek listesi, date picker)
+- [x] Router: `/ana-sayfa/oylamalar/yeni` ve `/ana-sayfa/oylamalar/:id` route'ları eklendi
+- [x] Web: `OylamaModels`, `OylamalarController`, `Index.cshtml`, `Detay.cshtml` eklendi
+- [x] Web: Sidebar'a Oylamalar linki eklendi
 
 ---
 

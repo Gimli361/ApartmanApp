@@ -1,3 +1,22 @@
+// CSRF — tüm fetch isteklerine RequestVerificationToken header'ı ekle
+(function () {
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    if (!tokenMeta) return;
+    const token = tokenMeta.getAttribute('content');
+    const original = window.fetch;
+    window.fetch = function (input, init) {
+        init = init || {};
+        const method = (init.method || (typeof input === 'object' ? input.method : 'GET') || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS' && method !== 'TRACE') {
+            init.headers = new Headers(init.headers || {});
+            if (!init.headers.has('RequestVerificationToken')) {
+                init.headers.set('RequestVerificationToken', token);
+            }
+        }
+        return original(input, init);
+    };
+})();
+
 // Global Toast Notification
 function toast(msg, type = 'success') {
     const colors = {
