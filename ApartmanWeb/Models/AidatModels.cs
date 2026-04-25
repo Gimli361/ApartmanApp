@@ -48,6 +48,7 @@ public class OtomatikAidatCreateRequest
 public class AidatViewModel
 {
     public List<AidatDto> Aidatlar { get; set; } = new();
+    public PagedResult<AidatDto>? AidatSayfa { get; set; }
     public List<OtomatikAidatDto> OtomatikAidatlar { get; set; } = new();
     public List<KullaniciDto> Kullanicilar { get; set; } = new();
 }

@@ -16,12 +16,18 @@ public class ArizalarController : Controller
         _apiService = apiService;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 20)
     {
         try
         {
-            var result = await _apiService.GetAsync<ApiResult<List<ArizaDto>>>("/api/ariza");
-            return View(result?.Data ?? new List<ArizaDto>());
+            var url = $"/api/ariza/paged?page={page}&pageSize={pageSize}";
+            var result = await _apiService.GetAsync<ApiResult<PagedResult<ArizaDto>>>(url);
+            var paged = result?.Data ?? new PagedResult<ArizaDto>
+            {
+                Page = page,
+                PageSize = pageSize
+            };
+            return View(paged);
         }
         catch (UnauthorizedAccessException)
         {

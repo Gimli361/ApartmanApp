@@ -93,6 +93,14 @@
                 }
             </div>
         </div>
+        @{
+            var aidatPag = ApartmanWeb.Models.PaginationViewModel.FromPaged(Model.AidatSayfa, p =>
+                Url.Action("Index", "Aidatlar", new { page = p, pageSize = Model.AidatSayfa?.PageSize ?? 20 })!);
+        }
+        @if (aidatPag is not null)
+        {
+            <partial name="_Pagination" model="aidatPag" />
+        }
     </div>
 
     <!-- Otomatik Aidat Sekmesi -->
@@ -206,7 +214,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <button type="button" class="btn btn-primary" id="aidatKaydetBtn" onclick="ekleAidat()">
+                <button type="button" class="btn btn-primary" id="aidatKaydetBtn" onclick="addDues()">
                     <i class="bi bi-check-lg me-1"></i> Kaydet
                 </button>
             </div>

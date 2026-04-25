@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using ApartmanApp.Business.DTOs.Bildirim;
 using ApartmanApp.Business.Services.Abstract;
+using ApartmanApp.Business.Validators;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,14 +12,26 @@ namespace ApartmanApp.API.Controllers;
 [Authorize]
 public class BildirimController(IBildirimService bildirimService) : ControllerBase
 {
-    private int CurrentUserId =>
-        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private bool TryGetCurrentUserId(out int id) =>
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out id) && id > 0;
 
     /// Oturumdaki kullanıcının bildirimleri
     [HttpGet]
     public async Task<IActionResult> GetMyBildirimler()
     {
-        var result = await bildirimService.GetByKullaniciIdAsync(CurrentUserId);
+        if (!TryGetCurrentUserId(out var currentUserId)) return Unauthorized();
+        var result = await bildirimService.GetByKullaniciIdAsync(currentUserId);
+        return Ok(result);
+    }
+
+    /// Sayfalı bildirim listesi
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetMyBildirimlerPaged(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (!TryGetCurrentUserId(out var currentUserId)) return Unauthorized();
+        var result = await bildirimService.GetPagedByKullaniciIdAsync(currentUserId, page, pageSize);
         return Ok(result);
     }
 
@@ -26,7 +39,8 @@ public class BildirimController(IBildirimService bildirimService) : ControllerBa
     [HttpGet("okunmamis-sayi")]
     public async Task<IActionResult> GetUnreadCount()
     {
-        var count = await bildirimService.GetUnreadCountAsync(CurrentUserId);
+        if (!TryGetCurrentUserId(out var currentUserId)) return Unauthorized();
+        var count = await bildirimService.GetUnreadCountAsync(currentUserId);
         return Ok(new { count });
     }
 
@@ -34,7 +48,8 @@ public class BildirimController(IBildirimService bildirimService) : ControllerBa
     [HttpPatch("tumu-okundu")]
     public async Task<IActionResult> MarkAllAsRead()
     {
-        var result = await bildirimService.MarkAllAsReadAsync(CurrentUserId);
+        if (!TryGetCurrentUserId(out var currentUserId)) return Unauthorized();
+        var result = await bildirimService.MarkAllAsReadAsync(currentUserId);
         return Ok(result);
     }
 
@@ -42,7 +57,8 @@ public class BildirimController(IBildirimService bildirimService) : ControllerBa
     [HttpPatch("{id:int}/okundu")]
     public async Task<IActionResult> MarkAsRead(int id)
     {
-        var result = await bildirimService.MarkAsReadAsync(id, CurrentUserId);
+        if (!TryGetCurrentUserId(out var currentUserId)) return Unauthorized();
+        var result = await bildirimService.MarkAsReadAsync(id, currentUserId);
         if (!result.Success)
             return NotFound(result);
         return Ok(result);
@@ -53,8 +69,9 @@ public class BildirimController(IBildirimService bildirimService) : ControllerBa
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> SendDuyuru([FromBody] DuyuruCreateDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Baslik) || string.IsNullOrWhiteSpace(dto.Icerik))
-            return BadRequest("Başlık ve içerik zorunludur.");
+        var validation = await new DuyuruCreateValidator().ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
 
         await bildirimService.SendToAllSakinlerAsync(dto.Baslik, dto.Icerik);
         return Ok(new { message = "Duyuru tüm sakinlere gönderildi." });
@@ -65,8 +82,9 @@ public class BildirimController(IBildirimService bildirimService) : ControllerBa
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> SendToBlok([FromBody] BlokBildirimDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.BlokNo) || string.IsNullOrWhiteSpace(dto.Baslik))
-            return BadRequest("Blok No, başlık ve içerik zorunludur.");
+        var validation = await new BlokBildirimValidator().ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
 
         await bildirimService.SendToBlokAsync(dto.BlokNo, dto.Baslik, dto.Icerik);
         return Ok(new { message = $"{dto.BlokNo} bloğundaki tüm sakinlere bildirim gönderildi." });
@@ -77,8 +95,9 @@ public class BildirimController(IBildirimService bildirimService) : ControllerBa
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> SendToDaire([FromBody] DaireBildirimDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.DaireNo) || string.IsNullOrWhiteSpace(dto.Baslik))
-            return BadRequest("Daire No, başlık ve içerik zorunludur.");
+        var validation = await new DaireBildirimValidator().ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
 
         await bildirimService.SendToDaireAsync(dto.DaireNo, dto.Baslik, dto.Icerik, dto.BlokNo);
         var hedef = string.IsNullOrWhiteSpace(dto.BlokNo)

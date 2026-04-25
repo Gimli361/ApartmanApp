@@ -17,10 +17,27 @@ class BildirimListScreen extends ConsumerStatefulWidget {
 }
 
 class _BildirimListScreenState extends ConsumerState<BildirimListScreen> {
+  final _scroll = ScrollController();
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(bildirimProvider.notifier).load());
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scroll.position.pixels >=
+        _scroll.position.maxScrollExtent - 200) {
+      ref.read(bildirimProvider.notifier).loadMore();
+    }
   }
 
   bool get _isAdmin =>
@@ -235,11 +252,34 @@ class _BildirimListScreenState extends ConsumerState<BildirimListScreen> {
       );
     }
 
+    final showFooter = state.isLoadingMore || !state.hasMore;
+    final itemCount = state.bildirimler.length + (showFooter ? 1 : 0);
+
     return ListView.separated(
+      controller: _scroll,
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 100, top: 8),
-      itemCount: state.bildirimler.length,
+      itemCount: itemCount,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
+        if (index >= state.bildirimler.length) {
+          if (state.isLoadingMore) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (!state.hasMore && state.bildirimler.isNotEmpty) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Text('Tüm bildirimler yüklendi.',
+                    style: TextStyle(color: Colors.grey, fontSize: 13)),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }
         final b = state.bildirimler[index];
         return _BildirimTile(
           bildirim: b,

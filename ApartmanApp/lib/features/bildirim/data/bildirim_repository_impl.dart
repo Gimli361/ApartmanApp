@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../domain/bildirim_model.dart';
+import '../../../core/paged_result.dart';
 import '../../../core/result.dart';
 import '../../../shared/services/api_service.dart';
 import 'bildirim_repository.dart';
@@ -19,6 +20,28 @@ class BildirimRepositoryImpl implements BildirimRepository {
           .map(BildirimModel.fromJson)
           .toList();
       return Success(bildirimler);
+    } on DioException catch (e) {
+      return Failure(ApiService.handleDioError(e));
+    } catch (e) {
+      return Failure(AppError(e.toString()));
+    }
+  }
+
+  @override
+  Future<Result<PagedResult<BildirimModel>, AppError>> getBildirimlerPaged({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final response = await _api.dio.get(
+        '/api/bildirim/paged',
+        queryParameters: {'page': page, 'pageSize': pageSize},
+      );
+      final paged = PagedResult<BildirimModel>.fromJson(
+        response.data['data'] as Map<String, dynamic>,
+        BildirimModel.fromJson,
+      );
+      return Success(paged);
     } on DioException catch (e) {
       return Failure(ApiService.handleDioError(e));
     } catch (e) {

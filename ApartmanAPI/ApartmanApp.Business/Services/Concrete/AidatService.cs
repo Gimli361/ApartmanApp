@@ -4,6 +4,7 @@ using ApartmanApp.Core.Common;
 using ApartmanApp.Core.Entities;
 using ApartmanApp.Core.Enums;
 using ApartmanApp.Data.Context;
+using ApartmanApp.Data.Extensions;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,6 +33,43 @@ public class AidatService(AppDbContext db, IMapper mapper) : IAidatService
             .ToListAsync();
 
         return Result<List<AidatListDto>>.Ok(mapper.Map<List<AidatListDto>>(aidatlar));
+    }
+
+    public async Task<Result<PagedResult<AidatListDto>>> GetPagedAsync(int page, int pageSize)
+    {
+        var paged = await db.Aidatlar
+            .Include(a => a.Kullanici)
+            .OrderByDescending(a => a.Yil).ThenByDescending(a => a.Ay)
+            .AsNoTracking()
+            .ToPagedResultAsync(page, pageSize);
+
+        var result = new PagedResult<AidatListDto>
+        {
+            Items = mapper.Map<List<AidatListDto>>(paged.Items),
+            Page = paged.Page,
+            PageSize = paged.PageSize,
+            TotalCount = paged.TotalCount
+        };
+        return Result<PagedResult<AidatListDto>>.Ok(result);
+    }
+
+    public async Task<Result<PagedResult<AidatListDto>>> GetPagedByKullaniciIdAsync(int kullaniciId, int page, int pageSize)
+    {
+        var paged = await db.Aidatlar
+            .Include(a => a.Kullanici)
+            .Where(a => a.KullaniciId == kullaniciId)
+            .OrderByDescending(a => a.Yil).ThenByDescending(a => a.Ay)
+            .AsNoTracking()
+            .ToPagedResultAsync(page, pageSize);
+
+        var result = new PagedResult<AidatListDto>
+        {
+            Items = mapper.Map<List<AidatListDto>>(paged.Items),
+            Page = paged.Page,
+            PageSize = paged.PageSize,
+            TotalCount = paged.TotalCount
+        };
+        return Result<PagedResult<AidatListDto>>.Ok(result);
     }
 
     public async Task<Result<AidatListDto>> GetByIdAsync(int id)

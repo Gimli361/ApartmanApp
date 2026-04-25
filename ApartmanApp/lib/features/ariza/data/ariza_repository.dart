@@ -1,9 +1,15 @@
 import 'dart:io';
 import '../domain/ariza_model.dart';
+import '../../../core/paged_result.dart';
 import '../../../core/result.dart';
 
 abstract class ArizaRepository {
   Future<Result<List<ArizaModel>, AppError>> getArizalar();
+  Future<Result<PagedResult<ArizaModel>, AppError>> getArizalarPaged({
+    int page = 1,
+    int pageSize = 20,
+    String? blokNo,
+  });
   Future<Result<ArizaModel, AppError>> getById(int id);
   Future<Result<ArizaModel, AppError>> createAriza({
     required String baslik,

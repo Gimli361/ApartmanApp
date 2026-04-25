@@ -4,6 +4,7 @@ using ApartmanApp.Core.Common;
 using ApartmanApp.Core.Entities;
 using ApartmanApp.Core.Enums;
 using ApartmanApp.Data.Context;
+using ApartmanApp.Data.Extensions;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,6 +32,35 @@ public class ArizaService(AppDbContext db, IMapper mapper, IBildirimService bild
             dtos[i].TakipciSayisi = arizalar[i].Takipler.Count;
 
         return Result<List<ArizaListDto>>.Ok(dtos);
+    }
+
+    public async Task<Result<PagedResult<ArizaListDto>>> GetPagedAsync(int page, int pageSize, string? blokNo = null)
+    {
+        var query = db.Arizalar
+            .Include(a => a.Bildiren)
+            .Include(a => a.Takipler)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(blokNo))
+            query = query.Where(a => a.BlokNo == blokNo);
+
+        var paged = await query
+            .OrderByDescending(a => a.Tarih)
+            .ToPagedResultAsync(page, pageSize);
+
+        var items = mapper.Map<List<ArizaListDto>>(paged.Items);
+        for (int i = 0; i < paged.Items.Count; i++)
+            items[i].TakipciSayisi = paged.Items[i].Takipler.Count;
+
+        var result = new PagedResult<ArizaListDto>
+        {
+            Items = items,
+            Page = paged.Page,
+            PageSize = paged.PageSize,
+            TotalCount = paged.TotalCount
+        };
+        return Result<PagedResult<ArizaListDto>>.Ok(result);
     }
 
     public async Task<Result<ArizaDetailDto>> GetByIdAsync(int id)

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import '../domain/ariza_model.dart';
 import '../../../core/constants.dart';
+import '../../../core/paged_result.dart';
 import '../../../core/result.dart';
 import '../../../shared/services/api_service.dart';
 import 'ariza_repository.dart';
@@ -22,6 +23,27 @@ class ArizaRepositoryImpl implements ArizaRepository {
     try {
       final res = await _api.dio.get('/api/ariza');
       return Success(_parseList(res.data['data']));
+    } on DioException catch (e) {
+      return Failure(ApiService.handleDioError(e));
+    }
+  }
+
+  @override
+  Future<Result<PagedResult<ArizaModel>, AppError>> getArizalarPaged({
+    int page = 1,
+    int pageSize = 20,
+    String? blokNo,
+  }) async {
+    try {
+      final query = <String, dynamic>{'page': page, 'pageSize': pageSize};
+      if (blokNo != null && blokNo.isNotEmpty) query['blokNo'] = blokNo;
+      final res = await _api.dio.get('/api/ariza/paged',
+          queryParameters: query);
+      final paged = PagedResult<ArizaModel>.fromJson(
+        res.data['data'] as Map<String, dynamic>,
+        ArizaModel.fromJson,
+      );
+      return Success(paged);
     } on DioException catch (e) {
       return Failure(ApiService.handleDioError(e));
     }

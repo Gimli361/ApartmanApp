@@ -15,19 +15,27 @@ public class AidatlarController : Controller
         _apiService = apiService;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 20)
     {
         try
         {
-            var aidatlarTask = _apiService.GetAsync<ApiResult<List<AidatDto>>>("/api/aidat");
+            var aidatlarTask = _apiService.GetAsync<ApiResult<PagedResult<AidatDto>>>(
+                $"/api/aidat/paged?page={page}&pageSize={pageSize}");
             var otomatikTask = _apiService.GetAsync<ApiResult<List<OtomatikAidatDto>>>("/api/otomatik-aidat");
             var kullanicilarTask = _apiService.GetAsync<KullaniciListResponse>("/api/kullanici");
 
             await Task.WhenAll(aidatlarTask, otomatikTask, kullanicilarTask);
 
+            var paged = aidatlarTask.Result?.Data ?? new PagedResult<AidatDto>
+            {
+                Page = page,
+                PageSize = pageSize
+            };
+
             var model = new AidatViewModel
             {
-                Aidatlar = aidatlarTask.Result?.Data ?? new List<AidatDto>(),
+                Aidatlar = paged.Items,
+                AidatSayfa = paged,
                 OtomatikAidatlar = otomatikTask.Result?.Data ?? new List<OtomatikAidatDto>(),
                 Kullanicilar = kullanicilarTask.Result?.Data ?? new List<KullaniciDto>()
             };

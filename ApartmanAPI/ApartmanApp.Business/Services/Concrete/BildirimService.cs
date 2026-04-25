@@ -4,6 +4,7 @@ using ApartmanApp.Core.Common;
 using ApartmanApp.Core.Entities;
 using ApartmanApp.Core.Enums;
 using ApartmanApp.Data.Context;
+using ApartmanApp.Data.Extensions;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,24 @@ public class BildirimService(AppDbContext db, IFcmService fcm, IMapper mapper) :
             .ToListAsync();
 
         return Result<List<BildirimListDto>>.Ok(mapper.Map<List<BildirimListDto>>(bildirimler));
+    }
+
+    public async Task<Result<PagedResult<BildirimListDto>>> GetPagedByKullaniciIdAsync(int kullaniciId, int page, int pageSize)
+    {
+        var paged = await db.Bildirimler
+            .Where(b => b.AliciId == kullaniciId)
+            .OrderByDescending(b => b.GonderimTarihi)
+            .AsNoTracking()
+            .ToPagedResultAsync(page, pageSize);
+
+        var result = new PagedResult<BildirimListDto>
+        {
+            Items = mapper.Map<List<BildirimListDto>>(paged.Items),
+            Page = paged.Page,
+            PageSize = paged.PageSize,
+            TotalCount = paged.TotalCount
+        };
+        return Result<PagedResult<BildirimListDto>>.Ok(result);
     }
 
     public async Task<int> GetUnreadCountAsync(int kullaniciId)

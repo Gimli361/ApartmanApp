@@ -6,6 +6,7 @@ namespace ApartmanApp.Business.Services.Abstract;
 public interface IBildirimService
 {
     Task<Result<List<BildirimListDto>>> GetByKullaniciIdAsync(int kullaniciId);
+    Task<Result<PagedResult<BildirimListDto>>> GetPagedByKullaniciIdAsync(int kullaniciId, int page, int pageSize);
     Task<int> GetUnreadCountAsync(int kullaniciId);
     Task<Result> MarkAsReadAsync(int bildirimId, int kullaniciId);
     Task<Result> MarkAllAsReadAsync(int kullaniciId);

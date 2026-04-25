@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/ariza_repository.dart';
 import '../../data/ariza_repository_impl.dart';
 import '../../domain/ariza_model.dart';
+import '../../../../core/paged_result.dart';
 import '../../../../core/result.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
@@ -15,46 +16,93 @@ final arizaRepositoryProvider = Provider<ArizaRepository>((ref) {
 class ArizaListState {
   final List<ArizaModel> arizalar;
   final bool isLoading;
+  final bool isLoadingMore;
   final String? errorMessage;
   final Set<int> loadingTakipIds;
+  final int currentPage;
+  final int totalCount;
+  final bool hasMore;
 
   const ArizaListState({
     this.arizalar = const [],
     this.isLoading = false,
+    this.isLoadingMore = false,
     this.errorMessage,
     this.loadingTakipIds = const {},
+    this.currentPage = 0,
+    this.totalCount = 0,
+    this.hasMore = true,
   });
 
   ArizaListState copyWith({
     List<ArizaModel>? arizalar,
     bool? isLoading,
+    bool? isLoadingMore,
     String? errorMessage,
     bool clearError = false,
     Set<int>? loadingTakipIds,
+    int? currentPage,
+    int? totalCount,
+    bool? hasMore,
   }) {
     return ArizaListState(
       arizalar: arizalar ?? this.arizalar,
       isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
       loadingTakipIds: loadingTakipIds ?? this.loadingTakipIds,
+      currentPage: currentPage ?? this.currentPage,
+      totalCount: totalCount ?? this.totalCount,
+      hasMore: hasMore ?? this.hasMore,
     );
   }
 }
 
 class ArizaListNotifier extends StateNotifier<ArizaListState> {
   final ArizaRepository _repo;
+  static const _pageSize = 20;
 
   ArizaListNotifier(this._repo) : super(const ArizaListState()) {
     load();
   }
 
+  /// İlk sayfayı yükler (refresh).
   Future<void> load() async {
     state = state.copyWith(isLoading: true, clearError: true);
-    final result = await _repo.getArizalar();
-    if (result is Success<List<ArizaModel>, AppError>) {
-      state = state.copyWith(isLoading: false, arizalar: result.data);
-    } else if (result is Failure<List<ArizaModel>, AppError>) {
+    final result = await _repo.getArizalarPaged(page: 1, pageSize: _pageSize);
+    if (result is Success<PagedResult<ArizaModel>, AppError>) {
+      final paged = result.data;
+      state = state.copyWith(
+        isLoading: false,
+        arizalar: paged.items,
+        currentPage: paged.page,
+        totalCount: paged.totalCount,
+        hasMore: paged.hasNext,
+      );
+    } else if (result is Failure<PagedResult<ArizaModel>, AppError>) {
       state = state.copyWith(isLoading: false, errorMessage: result.error.message);
+    }
+  }
+
+  /// Bir sonraki sayfayı yükler ve listeye ekler. Idempotent.
+  Future<void> loadMore() async {
+    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
+    state = state.copyWith(isLoadingMore: true, clearError: true);
+    final result = await _repo.getArizalarPaged(
+      page: state.currentPage + 1,
+      pageSize: _pageSize,
+    );
+    if (result is Success<PagedResult<ArizaModel>, AppError>) {
+      final paged = result.data;
+      state = state.copyWith(
+        isLoadingMore: false,
+        arizalar: [...state.arizalar, ...paged.items],
+        currentPage: paged.page,
+        totalCount: paged.totalCount,
+        hasMore: paged.hasNext,
+      );
+    } else if (result is Failure<PagedResult<ArizaModel>, AppError>) {
+      state = state.copyWith(isLoadingMore: false, errorMessage: result.error.message);
     }
   }
 

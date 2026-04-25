@@ -298,7 +298,7 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
 
 // ─── Yeniden kullanılabilir arıza listesi ─────────────────────────────────────
 
-class _ArizaListView extends ConsumerWidget {
+class _ArizaListView extends ConsumerStatefulWidget {
   final ArizaListState arizaState;
   final List<ArizaModel> arizalar;
   final bool isAdmin;
@@ -318,7 +318,38 @@ class _ArizaListView extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ArizaListView> createState() => _ArizaListViewState();
+}
+
+class _ArizaListViewState extends ConsumerState<_ArizaListView> {
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // Listenin son 200px'ine yaklaşınca sonraki sayfayı çek
+    if (_scroll.position.pixels >=
+        _scroll.position.maxScrollExtent - 200) {
+      ref.read(arizaListProvider.notifier).loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final arizaState = widget.arizaState;
+    final arizalar = widget.arizalar;
+
     if (arizaState.isLoading && arizaState.arizalar.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -335,27 +366,53 @@ class _ArizaListView extends ConsumerWidget {
           children: [
             const Icon(Icons.handyman_outlined, size: 48, color: Colors.grey),
             const SizedBox(height: 12),
-            Text(emptyMessage,
+            Text(widget.emptyMessage,
                 style: const TextStyle(color: Colors.grey, fontSize: 15)),
           ],
         ),
       );
     }
+
+    // Loader/footer için ekstra item
+    final showFooter = arizaState.isLoadingMore || !arizaState.hasMore;
+    final itemCount = arizalar.length + (showFooter ? 1 : 0);
+
     return RefreshIndicator(
-      onRefresh: () async => onRefresh(),
+      onRefresh: () async => widget.onRefresh(),
       child: ListView.separated(
+        controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(12),
-        itemCount: arizalar.length,
+        itemCount: itemCount,
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (context, i) {
+          if (i >= arizalar.length) {
+            // Footer
+            if (arizaState.isLoadingMore) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (!arizaState.hasMore && arizalar.isNotEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: Text('Tüm arızalar yüklendi.',
+                      style: TextStyle(color: Colors.grey, fontSize: 13)),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }
           final ariza = arizalar[i];
           return _ArizaCard(
             ariza: ariza,
-            isAdmin: isAdmin,
-            userId: userId,
-            onDelete:
-                isAdmin && onDelete != null ? () => onDelete!(ariza) : null,
+            isAdmin: widget.isAdmin,
+            userId: widget.userId,
+            onDelete: widget.isAdmin && widget.onDelete != null
+                ? () => widget.onDelete!(ariza)
+                : null,
             onTap: () => context.push('/ana-sayfa/arizalar/${ariza.id}'),
           );
         },
