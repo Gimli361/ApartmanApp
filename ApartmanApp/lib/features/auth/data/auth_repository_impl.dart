@@ -24,11 +24,16 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final data = response.data['data'] as Map<String, dynamic>;
       final token = data['token'] as String;
+      final refreshToken = data['refreshToken'] as String?;
       final userJson = data['user'] as Map<String, dynamic>;
       final user = UserModel.fromJson(userJson);
 
-      // Token ve kullanıcıyı sakla
+      // Token, refresh token ve kullanıcıyı sakla
       await _storage.write(key: AppConstants.storageKeyToken, value: token);
+      if (refreshToken != null) {
+        await _storage.write(
+            key: AppConstants.storageKeyRefreshToken, value: refreshToken);
+      }
       await _storage.write(
         key: AppConstants.storageKeyUser,
         value: jsonEncode(user.toJson()),
@@ -47,8 +52,20 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Result<void, AppError>> logout() async {
+    // Sunucuya da logout çağrısı yap (refresh token'ı revoke et)
+    final rt =
+        await _storage.read(key: AppConstants.storageKeyRefreshToken);
+    if (rt != null && rt.isNotEmpty) {
+      try {
+        await _api.dio.post('/api/auth/logout', data: {'refreshToken': rt});
+      } catch (_) {
+        // Sessizce yut — local cleanup zaten yapılacak
+      }
+    }
+
     await _storage.delete(key: AppConstants.storageKeyUser);
     await _storage.delete(key: AppConstants.storageKeyToken);
+    await _storage.delete(key: AppConstants.storageKeyRefreshToken);
     _api.clearAuthToken();
     return const Success(null);
   }
