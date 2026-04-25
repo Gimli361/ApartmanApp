@@ -17,11 +17,16 @@ public class AccountController : Controller
     }
 
     [HttpGet]
-    public IActionResult Login()
+    public IActionResult Login(bool expired = false, string? returnUrl = null)
     {
         if (User.Identity?.IsAuthenticated == true)
             return RedirectToAction("Index", "Home");
-        return View(new LoginViewModel());
+
+        var vm = new LoginViewModel();
+        if (expired)
+            vm.ErrorMessage = "Oturum süreniz doldu. Lütfen tekrar giriş yapın.";
+        ViewData["ReturnUrl"] = returnUrl;
+        return View(vm);
     }
 
     [HttpPost]
@@ -50,12 +55,15 @@ public class AccountController : Controller
                 return View(model);
             }
 
-            // Store JWT in cookie
+            // Store JWT in cookie. Production'da daima HTTPS şartı.
+            var isProd = !HttpContext.RequestServices
+                .GetRequiredService<IWebHostEnvironment>().IsDevelopment();
             Response.Cookies.Append("jwt_token", response.Data.Token, new CookieOptions
             {
                 HttpOnly = true,
                 Expires = DateTimeOffset.UtcNow.AddHours(8),
-                SameSite = SameSiteMode.Lax
+                SameSite = SameSiteMode.Strict,
+                Secure = isProd || Request.IsHttps,
             });
 
             // Create claims for cookie auth

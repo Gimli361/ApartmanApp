@@ -1,0 +1,174 @@
+@model KullaniciDto
+@{
+    ViewData["Title"] = "Profilim";
+    // AdSoyad'ı parçala — backend birleşik döndürüyor
+    var parts = (Model.AdSoyad ?? "").Split(' ', 2);
+    var ad = parts.Length > 0 ? parts[0] : "";
+    var soyad = parts.Length > 1 ? parts[1] : "";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-person-circle me-2 text-primary"></i>Profilim</h4>
+</div>
+
+<div class="row g-3">
+    <!-- Kişisel bilgiler -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <strong><i class="bi bi-card-text me-2"></i>Kişisel Bilgiler</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Email</label>
+                    <input type="email" class="form-control" value="@Model.Email" disabled />
+                    <small class="text-muted">Email değiştirilemez.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Rol</label>
+                    <input type="text" class="form-control" value="@Model.Rol" disabled />
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Ad <span class="text-danger">*</span></label>
+                        <input type="text" id="ad" class="form-control" value="@ad" maxlength="50" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Soyad <span class="text-danger">*</span></label>
+                        <input type="text" id="soyad" class="form-control" value="@soyad" maxlength="50" />
+                    </div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Daire No <span class="text-danger">*</span></label>
+                        <input type="text" id="daireNo" class="form-control" value="@(Model.DaireNo ?? "")" maxlength="20" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Blok No</label>
+                        <input type="text" id="blokNo" class="form-control" value="" maxlength="20" placeholder="(opsiyonel)" />
+                    </div>
+                </div>
+                <div id="bilgiHata" class="alert alert-danger d-none mt-3 py-2 small"></div>
+                <div id="bilgiBasari" class="alert alert-success d-none mt-3 py-2 small"></div>
+                <button id="bilgiKaydetBtn" class="btn btn-primary mt-3" onclick="bilgiKaydet()">
+                    <i class="bi bi-check-lg me-1"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Şifre değiştir -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <strong><i class="bi bi-lock me-2"></i>Şifre Değiştir</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Eski Şifre <span class="text-danger">*</span></label>
+                    <input type="password" id="eskiSifre" class="form-control" autocomplete="current-password" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Yeni Şifre <span class="text-danger">*</span></label>
+                    <input type="password" id="yeniSifre" class="form-control" autocomplete="new-password" minlength="8" />
+                    <small class="text-muted">En az 8 karakter, harf + rakam içermeli.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Yeni Şifre (Tekrar) <span class="text-danger">*</span></label>
+                    <input type="password" id="yeniSifreTekrar" class="form-control" autocomplete="new-password" />
+                </div>
+                <div id="sifreHata" class="alert alert-danger d-none mt-3 py-2 small"></div>
+                <div id="sifreBasari" class="alert alert-success d-none mt-3 py-2 small"></div>
+                <button id="sifreKaydetBtn" class="btn btn-primary mt-2" onclick="sifreKaydet()">
+                    <i class="bi bi-shield-lock me-1"></i> Şifreyi Güncelle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function showAlert(id, msg, type) {
+    const errEl = document.getElementById(id);
+    if (!errEl) return;
+    errEl.textContent = msg;
+    errEl.classList.remove('d-none');
+}
+function hideAlert(...ids) {
+    ids.forEach(id => document.getElementById(id)?.classList.add('d-none'));
+}
+
+function bilgiKaydet() {
+    hideAlert('bilgiHata', 'bilgiBasari');
+    const ad = document.getElementById('ad').value.trim();
+    const soyad = document.getElementById('soyad').value.trim();
+    const daireNo = document.getElementById('daireNo').value.trim();
+    const blokNo = document.getElementById('blokNo').value.trim();
+
+    if (!ad || !soyad || !daireNo) {
+        showAlert('bilgiHata', 'Ad, soyad ve daire no zorunludur.', 'danger');
+        return;
+    }
+
+    setLoading('bilgiKaydetBtn', true);
+    fetch('/Profil/BilgiGuncelle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ad, soyad, daireNo, blokNo: blokNo || null })
+    }).then(r => r.json()).then(res => {
+        setLoading('bilgiKaydetBtn', false);
+        if (res.success) {
+            showAlert('bilgiBasari', res.message || 'Bilgileriniz güncellendi.', 'success');
+            toast('Profil güncellendi.', 'success');
+        } else {
+            showAlert('bilgiHata', res.message || 'Güncelleme başarısız.', 'danger');
+        }
+    }).catch(() => {
+        setLoading('bilgiKaydetBtn', false);
+        showAlert('bilgiHata', 'Bağlantı hatası.', 'danger');
+    });
+}
+
+function sifreKaydet() {
+    hideAlert('sifreHata', 'sifreBasari');
+    const eski = document.getElementById('eskiSifre').value;
+    const yeni = document.getElementById('yeniSifre').value;
+    const yeniTekrar = document.getElementById('yeniSifreTekrar').value;
+
+    if (!eski || !yeni || !yeniTekrar) {
+        showAlert('sifreHata', 'Tüm şifre alanları zorunludur.', 'danger');
+        return;
+    }
+    if (yeni.length < 8) {
+        showAlert('sifreHata', 'Yeni şifre en az 8 karakter olmalı.', 'danger');
+        return;
+    }
+    if (yeni !== yeniTekrar) {
+        showAlert('sifreHata', 'Yeni şifreler eşleşmiyor.', 'danger');
+        return;
+    }
+
+    setLoading('sifreKaydetBtn', true);
+    fetch('/Profil/SifreGuncelle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eskiSifre: eski, yeniSifre: yeni })
+    }).then(r => r.json()).then(res => {
+        setLoading('sifreKaydetBtn', false);
+        if (res.success) {
+            document.getElementById('eskiSifre').value = '';
+            document.getElementById('yeniSifre').value = '';
+            document.getElementById('yeniSifreTekrar').value = '';
+            showAlert('sifreBasari', res.message || 'Şifreniz güncellendi.', 'success');
+            toast('Şifre güncellendi.', 'success');
+        } else {
+            showAlert('sifreHata', res.message || 'Şifre güncellenemedi.', 'danger');
+        }
+    }).catch(() => {
+        setLoading('sifreKaydetBtn', false);
+        showAlert('sifreHata', 'Bağlantı hatası.', 'danger');
+    });
+}
+</script>
+}
