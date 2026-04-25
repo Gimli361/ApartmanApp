@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,26 +15,48 @@ import 'features/bildirim/presentation/providers/bildirim_provider.dart';
 import 'shared/services/notification_service.dart';
 
 void main() async {
-  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  // Tüm async hatalar runZonedGuarded altında yakalansın diye main'i guard'a sar.
+  await runZonedGuarded<Future<void>>(() async {
+    final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+    FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
-  await initializeDateFormatting('tr');
+    await initializeDateFormatting('tr');
 
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    debugPrint('[Firebase] Başlatma hatası: $e');
-    FlutterNativeSplash.remove();
-    runApp(_FirebaseErrorApp(message: e.toString()));
-    return;
-  }
+    try {
+      await Firebase.initializeApp();
+    } catch (e) {
+      debugPrint('[Firebase] Başlatma hatası: $e');
+      FlutterNativeSplash.remove();
+      runApp(_FirebaseErrorApp(message: e.toString()));
+      return;
+    }
 
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    debugPrint('[Flutter Error] ${details.exceptionAsString()}');
-  };
+    // Crashlytics — sadece release'de etkin (debug'da spam yapmaz).
+    // Firebase project Crashlytics aktif değilse plugin sessizce başarısız olur.
+    if (!kDebugMode) {
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+      // Flutter framework hatalarını Crashlytics'e ilet
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      // Native (platform) hatalarını yakala
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+    } else {
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        debugPrint('[Flutter Error] ${details.exceptionAsString()}');
+      };
+    }
 
-  runApp(const ProviderScope(child: ApartmanApp()));
+    runApp(const ProviderScope(child: ApartmanApp()));
+  }, (error, stack) {
+    if (!kDebugMode) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    } else {
+      debugPrint('[Zone Error] $error\n$stack');
+    }
+  });
 }
 
 class _FirebaseErrorApp extends StatelessWidget {
