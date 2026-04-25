@@ -83,6 +83,37 @@ R=$(req GET "$BASE/api/kullanici")
 SC=$(sc "$R")
 [[ "$SC" == "401" ]] && ok "Token olmadan korumalı endpoint → 401" || fail "Token olmadan → HTTP $SC (401 beklendi)"
 
+# 1.6 Refresh token akışı
+ADMIN_REFRESH=$(body "$(req POST "$BASE/api/auth/login" '{"email":"admin@apartman.com","sifre":"Test123!"}')" | grep -o '"refreshToken"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"refreshToken"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+if [[ -n "$ADMIN_REFRESH" ]]; then
+  R=$(req POST "$BASE/api/auth/refresh" "{\"refreshToken\":\"$ADMIN_REFRESH\"}")
+  SC=$(sc "$R")
+  NEW_TOKEN=$(get_token "$R")
+  NEW_REFRESH=$(body "$R" | grep -o '"refreshToken"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"refreshToken"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+  if [[ "$SC" == "200" && -n "$NEW_TOKEN" && "$NEW_REFRESH" != "$ADMIN_REFRESH" ]]; then
+    ok "Refresh token → 200, yeni access+refresh üretildi (rotation)"
+  else
+    fail "Refresh token → HTTP $SC, yeni rotation: $([ "$NEW_REFRESH" != "$ADMIN_REFRESH" ] && echo evet || echo hayır)"
+  fi
+
+  # 1.7 Eski refresh tekrar kullanılırsa → 401 (replay korunması)
+  R=$(req POST "$BASE/api/auth/refresh" "{\"refreshToken\":\"$ADMIN_REFRESH\"}")
+  SC=$(sc "$R")
+  [[ "$SC" == "401" ]] && ok "Eski refresh token tekrar kullanım → 401 (replay)" || warn "Eski refresh → HTTP $SC (401 beklendi)"
+
+  # 1.8 Logout — yeni refresh'i revoke et
+  R=$(req POST "$BASE/api/auth/logout" "{\"refreshToken\":\"$NEW_REFRESH\"}")
+  SC=$(sc "$R")
+  [[ "$SC" == "200" ]] && ok "Logout → 200" || warn "Logout → HTTP $SC"
+
+  # 1.9 Logout'tan sonra refresh denenirse → 401
+  R=$(req POST "$BASE/api/auth/refresh" "{\"refreshToken\":\"$NEW_REFRESH\"}")
+  SC=$(sc "$R")
+  [[ "$SC" == "401" ]] && ok "Logout sonrası refresh → 401" || warn "Logout sonrası refresh → HTTP $SC (401 beklendi)"
+else
+  warn "Login response'unda refreshToken yok — refresh testleri atlandı"
+fi
+
 # ============================================================
 section "2. KULLANICI — CRUD"
 # ============================================================
@@ -498,7 +529,244 @@ req PATCH "$BASE/api/kullanici/$SAKIN_ID/sifre" \
   '{"eskiSifre":"NewPass456!","yeniSifre":"Test123!"}' "$SAKIN_TOKEN" > /dev/null 2>&1
 
 # ============================================================
-section "9. TEMİZLİK"
+section "9. OYLAMA"
+# ============================================================
+
+# 9.1 Admin yeni oylama oluştur
+BITIS=$(date -d "+30 days" +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || date -v+30d +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "2030-12-31T23:59:59")
+R=$(req POST "$BASE/api/oylama" \
+  "{\"baslik\":\"Test Oylamasi\",\"aciklama\":\"Otomatik test\",\"bitisTarihi\":\"$BITIS\",\"secenekler\":[\"Evet\",\"Hayir\",\"Cekimser\"]}" \
+  "$ADMIN_TOKEN")
+SC=$(sc "$R")
+OYLAMA_ID=$(first_id "$R")
+if [[ "$SC" == "201" && -n "$OYLAMA_ID" ]]; then
+  ok "Oylama oluştur → 201 (id=$OYLAMA_ID)"
+else
+  fail "Oylama oluştur → HTTP $SC | $(body "$R" | head -c 200)"
+fi
+
+# 9.2 Sakin oylama oluşturamaz → 403
+R=$(req POST "$BASE/api/oylama" \
+  "{\"baslik\":\"Yetkisiz\",\"bitisTarihi\":\"$BITIS\",\"secenekler\":[\"a\",\"b\"]}" \
+  "$SAKIN_TOKEN")
+SC=$(sc "$R")
+[[ "$SC" == "403" ]] && ok "Sakin oylama oluşturamaz → 403" || fail "Sakin oylama POST → HTTP $SC (403 beklendi)"
+
+# 9.3 Oylama listesi
+R=$(req GET "$BASE/api/oylama" "" "$SAKIN_TOKEN")
+SC=$(sc "$R"); COUNT=$(count_ids "$R")
+[[ "$SC" == "200" ]] && ok "Oylama listesi (sakin) → 200, $COUNT kayıt" || fail "Oylama listesi → HTTP $SC"
+
+# 9.4 Oylama detayı + ilk seçenek id'sini al
+SECENEK_ID=""
+SECENEK_ID2=""
+if [[ -n "$OYLAMA_ID" ]]; then
+  R=$(req GET "$BASE/api/oylama/$OYLAMA_ID" "" "$SAKIN_TOKEN")
+  SC=$(sc "$R")
+  SECENEK_ID=$(body "$R" | grep -o '"secenekler"[[:space:]]*:[[:space:]]*\[[^]]*' | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*$')
+  SECENEK_ID2=$(body "$R" | grep -o '"secenekler"[[:space:]]*:[[:space:]]*\[[^]]*' | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]*' | sed -n '2p' | grep -o '[0-9]*$')
+  if [[ "$SC" == "200" && -n "$SECENEK_ID" ]]; then
+    ok "Oylama detay → 200 (ilk seçenek id=$SECENEK_ID, ikinci=$SECENEK_ID2)"
+  else
+    fail "Oylama detay → HTTP $SC | $(body "$R" | head -c 200)"
+  fi
+fi
+
+# 9.5 Sakin oy ver
+if [[ -n "$OYLAMA_ID" && -n "$SECENEK_ID" ]]; then
+  R=$(req POST "$BASE/api/oylama/$OYLAMA_ID/oy" "{\"secenekId\":$SECENEK_ID}" "$SAKIN_TOKEN")
+  SC=$(sc "$R")
+  [[ "$SC" == "200" ]] && ok "Sakin oy ver → 200" || fail "Oy ver → HTTP $SC | $(body "$R" | head -c 150)"
+
+  # 9.6 Oy değiştir (aynı oylamada başka seçeneğe oy)
+  if [[ -n "$SECENEK_ID2" ]]; then
+    R=$(req POST "$BASE/api/oylama/$OYLAMA_ID/oy" "{\"secenekId\":$SECENEK_ID2}" "$SAKIN_TOKEN")
+    SC=$(sc "$R")
+    [[ "$SC" == "200" ]] && ok "Oy değiştir → 200" || warn "Oy değiştir → HTTP $SC (servis aynı oylamada güncelleme yapmıyor olabilir)"
+  fi
+
+  # 9.7 Oy geri al
+  R=$(req DELETE "$BASE/api/oylama/$OYLAMA_ID/oy" "" "$SAKIN_TOKEN")
+  SC=$(sc "$R")
+  [[ "$SC" == "200" ]] && ok "Oy geri al → 200" || fail "Oy geri al → HTTP $SC"
+
+  # 9.8 Oy yokken tekrar geri al → 400
+  R=$(req DELETE "$BASE/api/oylama/$OYLAMA_ID/oy" "" "$SAKIN_TOKEN")
+  SC=$(sc "$R")
+  [[ "$SC" == "400" ]] && ok "Oy yokken geri al → 400" || warn "Tekrar oy geri al → HTTP $SC (400 beklendi)"
+
+  # 9.9 Toggle aktif/pasif
+  R=$(req PATCH "$BASE/api/oylama/$OYLAMA_ID/toggle" "" "$ADMIN_TOKEN")
+  SC=$(sc "$R")
+  [[ "$SC" == "200" ]] && ok "Oylama toggle → 200" || fail "Oylama toggle → HTTP $SC"
+
+  # 9.10 Pasifken oy verilemez → 400
+  R=$(req POST "$BASE/api/oylama/$OYLAMA_ID/oy" "{\"secenekId\":$SECENEK_ID}" "$SAKIN_TOKEN")
+  SC=$(sc "$R")
+  [[ "$SC" == "400" ]] && ok "Pasif oylamaya oy → 400" || warn "Pasif oylama oy → HTTP $SC (400 beklendi)"
+fi
+
+# 9.11 Geçersiz oylama id → 404
+R=$(req GET "$BASE/api/oylama/99999" "" "$SAKIN_TOKEN")
+SC=$(sc "$R")
+[[ "$SC" == "404" ]] && ok "Geçersiz oylama id → 404" || fail "Geçersiz oylama → HTTP $SC (404 beklendi)"
+
+# 9.12 Sakin oylama silemez → 403
+if [[ -n "$OYLAMA_ID" ]]; then
+  R=$(req DELETE "$BASE/api/oylama/$OYLAMA_ID" "" "$SAKIN_TOKEN")
+  SC=$(sc "$R")
+  [[ "$SC" == "403" ]] && ok "Sakin oylama silemez → 403" || fail "Sakin oylama sil → HTTP $SC (403 beklendi)"
+fi
+
+# ============================================================
+section "10. FOTO UPLOAD"
+# ============================================================
+
+# Multipart için yardımcı (req() JSON tabanlı; foto için ayrı curl çağrısı)
+TMP_DIR=$(mktemp -d 2>/dev/null || echo "/tmp")
+JPG_FILE="$TMP_DIR/test_foto.jpg"
+TXT_FILE="$TMP_DIR/test_foto.txt"
+
+# Geçerli minimal JPG (FFD8FF magic byte) — base64 ile oluştur
+printf '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\x09\x09\x08\x0a\x0c\x14\x0d\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c $.'\'' #&)*),%-7-),0-,\xff\xd9' > "$JPG_FILE" 2>/dev/null
+echo "Bu bir text dosyasidir, jpg degil." > "$TXT_FILE"
+
+# Foto için yeni bir arıza oluştur (olmayanı silinmemeli)
+R=$(req POST "$BASE/api/ariza" \
+  "{\"baslik\":\"Foto Test Arizasi\",\"aciklama\":\"foto upload icin\",\"oncelik\":0,\"bildirenId\":$SAKIN_ID}" \
+  "$SAKIN_TOKEN")
+FOTO_ARIZA_ID=$(first_id "$R")
+
+if [[ -n "$FOTO_ARIZA_ID" ]]; then
+  # 10.1 Geçerli JPG yükle (sakin kendi arızasına)
+  R=$(curl -s -w "__STATUS__%{http_code}" \
+    -X POST "$BASE/api/ariza/$FOTO_ARIZA_ID/foto" \
+    -H "Authorization: Bearer $SAKIN_TOKEN" \
+    -F "dosya=@$JPG_FILE;type=image/jpeg")
+  SC=$(sc "$R")
+  FOTO_ID=$(first_id "$R")
+  if [[ "$SC" == "200" && -n "$FOTO_ID" ]]; then
+    ok "JPG foto yükle → 200 (id=$FOTO_ID)"
+  else
+    fail "JPG foto yükle → HTTP $SC | $(body "$R" | head -c 200)"
+  fi
+
+  # 10.2 TXT yükle → reddedilmeli (magic-byte kontrolü)
+  R=$(curl -s -w "__STATUS__%{http_code}" \
+    -X POST "$BASE/api/ariza/$FOTO_ARIZA_ID/foto" \
+    -H "Authorization: Bearer $SAKIN_TOKEN" \
+    -F "dosya=@$TXT_FILE;type=text/plain")
+  SC=$(sc "$R")
+  [[ "$SC" == "400" ]] && ok "Geçersiz dosya türü (txt) → 400" || warn "TXT yükleme → HTTP $SC (400 beklendi — magic-byte kontrolü?)"
+
+  # 10.3 Başkasının arızasına foto yükleme yasak (admin değil + bildiren değil)
+  # ADMIN_TOKEN ile başka kullanıcı yapamayız; ama farklı sakin kullanıcı yok.
+  # Bu yüzden token'sız → 401 testi yap
+  R=$(curl -s -w "__STATUS__%{http_code}" \
+    -X POST "$BASE/api/ariza/$FOTO_ARIZA_ID/foto" \
+    -F "dosya=@$JPG_FILE;type=image/jpeg")
+  SC=$(sc "$R")
+  [[ "$SC" == "401" ]] && ok "Token'sız foto yükle → 401" || fail "Token'sız foto → HTTP $SC (401 beklendi)"
+
+  # 10.4 Foto listesi
+  R=$(req GET "$BASE/api/ariza/$FOTO_ARIZA_ID/foto" "" "$ADMIN_TOKEN")
+  SC=$(sc "$R"); COUNT=$(count_ids "$R")
+  [[ "$SC" == "200" ]] && ok "Foto listesi → 200, $COUNT kayıt" || fail "Foto listesi → HTTP $SC"
+
+  # 10.5 Sakin foto silemez → 403
+  if [[ -n "$FOTO_ID" ]]; then
+    R=$(req DELETE "$BASE/api/ariza/$FOTO_ARIZA_ID/foto/$FOTO_ID" "" "$SAKIN_TOKEN")
+    SC=$(sc "$R")
+    [[ "$SC" == "403" ]] && ok "Sakin foto silemez → 403" || fail "Sakin foto sil → HTTP $SC (403 beklendi)"
+
+    # 10.6 Admin foto silebilir
+    R=$(req DELETE "$BASE/api/ariza/$FOTO_ARIZA_ID/foto/$FOTO_ID" "" "$ADMIN_TOKEN")
+    SC=$(sc "$R")
+    [[ "$SC" == "200" ]] && ok "Admin foto sil → 200" || fail "Admin foto sil → HTTP $SC"
+  fi
+fi
+
+# Geçici dosyaları temizle
+rm -f "$JPG_FILE" "$TXT_FILE" 2>/dev/null
+
+# ============================================================
+section "11. BLOK / DAİRE"
+# ============================================================
+
+# 11.1 Blok listesi (her authenticated user)
+R=$(req GET "$BASE/api/blok" "" "$SAKIN_TOKEN")
+SC=$(sc "$R"); COUNT=$(count_ids "$R")
+[[ "$SC" == "200" ]] && ok "Blok listesi → 200, $COUNT kayıt" || fail "Blok listesi → HTTP $SC"
+
+# 11.2 Sakin blok oluşturamaz → 403
+R=$(req POST "$BASE/api/blok" '{"ad":"Z"}' "$SAKIN_TOKEN")
+SC=$(sc "$R")
+[[ "$SC" == "403" ]] && ok "Sakin blok oluşturamaz → 403" || fail "Sakin blok POST → HTTP $SC (403 beklendi)"
+
+# 11.3 Admin yeni blok oluştur
+STAMP=$(date +%s)
+BLOK_AD="TestBlok_${STAMP}"
+R=$(req POST "$BASE/api/blok" "{\"ad\":\"$BLOK_AD\"}" "$ADMIN_TOKEN")
+SC=$(sc "$R")
+BLOK_ID=$(first_id "$R")
+if [[ "$SC" == "200" && -n "$BLOK_ID" ]]; then
+  ok "Blok oluştur → 200 (id=$BLOK_ID, ad=$BLOK_AD)"
+else
+  fail "Blok oluştur → HTTP $SC | $(body "$R" | head -c 150)"
+fi
+
+# 11.4 Boş ad → 400
+R=$(req POST "$BASE/api/blok" '{"ad":""}' "$ADMIN_TOKEN")
+SC=$(sc "$R")
+[[ "$SC" == "400" ]] && ok "Boş blok adı → 400" || fail "Boş blok adı → HTTP $SC (400 beklendi)"
+
+# 11.5 Blok detay (sakinler ile, admin)
+R=$(req GET "$BASE/api/blok/detay" "" "$ADMIN_TOKEN")
+SC=$(sc "$R")
+[[ "$SC" == "200" ]] && ok "Blok detay (sakinli) → 200" || fail "Blok detay → HTTP $SC"
+
+# 11.6 Sakin blok detayını çekemez → 403
+R=$(req GET "$BASE/api/blok/detay" "" "$SAKIN_TOKEN")
+SC=$(sc "$R")
+[[ "$SC" == "403" ]] && ok "Sakin blok detay → 403" || warn "Sakin blok detay → HTTP $SC (403 beklendi)"
+
+# 11.7 Blok'a daire ekle
+DAIRE_ID=""
+if [[ -n "$BLOK_ID" ]]; then
+  R=$(req POST "$BASE/api/daire" "{\"blokId\":$BLOK_ID,\"daireNo\":\"T1\"}" "$ADMIN_TOKEN")
+  SC=$(sc "$R")
+  DAIRE_ID=$(first_id "$R")
+  if [[ "$SC" == "200" && -n "$DAIRE_ID" ]]; then
+    ok "Daire oluştur → 200 (id=$DAIRE_ID)"
+  else
+    fail "Daire oluştur → HTTP $SC | $(body "$R" | head -c 150)"
+  fi
+
+  # 11.8 Sakin daire oluşturamaz → 403
+  R=$(req POST "$BASE/api/daire" "{\"blokId\":$BLOK_ID,\"daireNo\":\"X1\"}" "$SAKIN_TOKEN")
+  SC=$(sc "$R")
+  [[ "$SC" == "403" ]] && ok "Sakin daire oluşturamaz → 403" || fail "Sakin daire POST → HTTP $SC (403 beklendi)"
+
+  # 11.9 Bloğa göre daireler
+  R=$(req GET "$BASE/api/daire/blok/$BLOK_ID" "" "$ADMIN_TOKEN")
+  SC=$(sc "$R"); COUNT=$(count_ids "$R")
+  [[ "$SC" == "200" && "$COUNT" -ge 1 ]] 2>/dev/null && ok "Bloğa göre daireler → 200, $COUNT kayıt" || fail "Daire by blok → HTTP $SC, count=$COUNT"
+
+  # 11.10 Daire sil
+  if [[ -n "$DAIRE_ID" ]]; then
+    R=$(req DELETE "$BASE/api/daire/$DAIRE_ID" "" "$ADMIN_TOKEN")
+    SC=$(sc "$R")
+    [[ "$SC" == "200" ]] && ok "Daire sil → 200" || fail "Daire sil → HTTP $SC"
+  fi
+
+  # 11.11 Geçersiz daire id → 404
+  R=$(req DELETE "$BASE/api/daire/99999" "" "$ADMIN_TOKEN")
+  SC=$(sc "$R")
+  [[ "$SC" == "404" ]] && ok "Geçersiz daire sil → 404" || warn "Geçersiz daire → HTTP $SC (404 beklendi)"
+fi
+
+# ============================================================
+section "12. TEMİZLİK"
 # ============================================================
 
 do_delete() {
@@ -511,8 +779,11 @@ do_delete() {
 [[ -n "$ARIZA_ID"      ]] && do_delete "$BASE/api/ariza/$ARIZA_ID"          "$ADMIN_TOKEN" "Arıza #$ARIZA_ID"
 [[ -n "$ARIZA_ID2"     ]] && do_delete "$BASE/api/ariza/$ARIZA_ID2"         "$ADMIN_TOKEN" "Arıza #$ARIZA_ID2"
 [[ -n "$TAKIP_ARIZA_ID" ]] && do_delete "$BASE/api/ariza/$TAKIP_ARIZA_ID"   "$ADMIN_TOKEN" "Takip arızası"
+[[ -n "$FOTO_ARIZA_ID" ]] && do_delete "$BASE/api/ariza/$FOTO_ARIZA_ID"     "$ADMIN_TOKEN" "Foto arızası"
 [[ -n "$AIDAT_ID"      ]] && do_delete "$BASE/api/aidat/$AIDAT_ID"          "$ADMIN_TOKEN" "Aidat #$AIDAT_ID"
 [[ -n "$OA_ID"         ]] && do_delete "$BASE/api/otomatik-aidat/$OA_ID"   "$ADMIN_TOKEN" "Otomatik aidat #$OA_ID"
+[[ -n "$OYLAMA_ID"     ]] && do_delete "$BASE/api/oylama/$OYLAMA_ID"        "$ADMIN_TOKEN" "Oylama #$OYLAMA_ID"
+[[ -n "$BLOK_ID"       ]] && do_delete "$BASE/api/blok/$BLOK_ID"            "$ADMIN_TOKEN" "Blok #$BLOK_ID"
 [[ -n "$NEW_USER_ID"   ]] && do_delete "$BASE/api/kullanici/$NEW_USER_ID"   "$ADMIN_TOKEN" "Test kullanıcısı #$NEW_USER_ID"
 
 # ============================================================
