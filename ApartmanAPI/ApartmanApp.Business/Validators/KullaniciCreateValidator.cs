@@ -27,8 +27,6 @@ public class KullaniciCreateValidator : AbstractValidator<KullaniciCreateDto>
         RuleFor(x => x.Rol)
             .IsInEnum().WithMessage("Geçersiz rol değeri.");
 
-        RuleFor(x => x.Sifre)
-            .NotEmpty().WithMessage("Şifre boş olamaz.")
-            .MinimumLength(6).WithMessage("Şifre en az 6 karakter olmalıdır.");
+        RuleFor(x => x.Sifre).StrongPassword();
     }
 }
