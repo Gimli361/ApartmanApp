@@ -129,7 +129,15 @@ public class OylamaService(AppDbContext db) : IOylamaService
             OyTarihi = DateTime.UtcNow,
         });
 
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Concurrent istekte unique index ihlali — kullanıcı zaten oy vermiş
+            return Result.Fail("Bu oylamaya zaten oy kullandınız.");
+        }
         return Result.Ok("Oyunuz kaydedildi.");
     }
 

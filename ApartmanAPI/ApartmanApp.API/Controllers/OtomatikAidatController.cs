@@ -58,6 +58,11 @@ public class OtomatikAidatController(IOtomatikAidatService service) : Controller
     [HttpPost("uret")]
     public async Task<IActionResult> Uret([FromBody] AyYilDto dto)
     {
+        if (dto.Ay < 1 || dto.Ay > 12)
+            return BadRequest("Ay 1 ile 12 arasında olmalıdır.");
+        if (dto.Yil < 2020 || dto.Yil > 2100)
+            return BadRequest("Yıl 2020 ile 2100 arasında olmalıdır.");
+
         var uretilen = await service.UretAylikAidatlarAsync(dto.Ay, dto.Yil);
         return Ok(new { uretilen, mesaj = $"{uretilen} aidat kaydı oluşturuldu." });
     }

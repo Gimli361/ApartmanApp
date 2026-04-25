@@ -1,4 +1,6 @@
 using System.Text;
+using System.Threading.RateLimiting;
+using ApartmanApp.API.Middleware;
 using ApartmanApp.API.Services;
 using ApartmanApp.Business.Mappings;
 using ApartmanApp.Business.Services.Abstract;
@@ -7,11 +9,42 @@ using ApartmanApp.Data.Context;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Sentry — hata izleme. DSN appsettings/env'den okunur; boşsa Sentry pasif çalışır.
+var sentryDsn = builder.Configuration["Sentry:Dsn"];
+if (!string.IsNullOrWhiteSpace(sentryDsn))
+{
+    builder.WebHost.UseSentry(o =>
+    {
+        o.Dsn = sentryDsn;
+        o.Environment = builder.Environment.EnvironmentName;
+        o.TracesSampleRate = builder.Environment.IsDevelopment() ? 1.0 : 0.2;
+        o.SendDefaultPii = false;
+        o.AttachStacktrace = true;
+        // 4xx istekleri Sentry'ye gönderme (404 spam'i önler)
+        o.MinimumEventLevel = Microsoft.Extensions.Logging.LogLevel.Error;
+    });
+}
+
+// Serilog — console + günlük dönüşlü dosya (logs/api-YYYYMMDD.log, 14 gün tut)
+builder.Host.UseSerilog((ctx, services, cfg) => cfg
+    .ReadFrom.Configuration(ctx.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        path: Path.Combine(ctx.HostingEnvironment.ContentRootPath, "logs", "api-.log"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}"));
 
 // Firebase Admin SDK
 var firebaseCredPath = Path.Combine(builder.Environment.ContentRootPath,
@@ -21,9 +54,13 @@ FirebaseApp.Create(new AppOptions
     Credential = CredentialFactory.FromFile(firebaseCredPath, "service_account"),
 });
 
-// DbContext
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+// DbContext + audit/soft-delete interceptor
+builder.Services.AddSingleton<ApartmanApp.Data.Interceptors.AuditSaveChangesInterceptor>();
+builder.Services.AddDbContext<AppDbContext>((sp, options) =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Default"));
+    options.AddInterceptors(sp.GetRequiredService<ApartmanApp.Data.Interceptors.AuditSaveChangesInterceptor>());
+});
 
 // AutoMapper
 builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
@@ -62,6 +99,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
+// Rate limiting — login brute-force koruması (IP başına 5 dk'da 10 istek)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            }));
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
@@ -104,10 +157,35 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Reverse proxy (Nginx/Caddy/Cloudflare) arkasında çalışırken
+// gerçek istemci IP'sini ve HTTPS scheme'ini görmek için.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddCors(options =>
 {
+    var allowedOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
     options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+    {
+        if (allowedOrigins.Length == 0)
+        {
+            // Geliştirme fallback'i — production'da Cors:AllowedOrigins set edilmeli
+            policy.SetIsOriginAllowed(_ => builder.Environment.IsDevelopment())
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+    });
 });
 
 var app = builder.Build();
@@ -123,6 +201,23 @@ using (var scope = app.Services.CreateScope())
 var uploadsPath = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "uploads");
 Directory.CreateDirectory(uploadsPath);
 
+// ÖNEMLİ: ForwardedHeaders auth/HTTPS redirect'ten ÖNCE gelmeli;
+// reverse proxy arkasında scheme/host doğru çözülsün diye.
+app.UseForwardedHeaders();
+
+// Production: HTTPS zorunlu + HSTS (1 yıl, alt domain dahil)
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+// Global exception handler — pipeline'ın en başında
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// HTTP request logging (Serilog) — yöntem, path, status, süre
+app.UseSerilogRequestLogging();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -131,10 +226,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 app.UseStaticFiles();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-// Admin seed — yoksa oluştur, varsa şifresini sıfırla
+// Admin seed — yalnızca admin kullanıcısı yoksa oluştur (mevcut admin'in şifresine dokunulmaz).
+// Acil reset gerekirse `AdminSeed:ForcePasswordReset=true` ile bir kez çalıştırıp tekrar false'a çekin.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -142,6 +239,7 @@ using (var scope = app.Services.CreateScope())
         ?? throw new InvalidOperationException("AdminSeed:Email yapılandırılmamış.");
     var adminSifre = app.Configuration["AdminSeed:Sifre"]
         ?? throw new InvalidOperationException("AdminSeed:Sifre yapılandırılmamış.");
+    var forceReset = app.Configuration.GetValue("AdminSeed:ForcePasswordReset", false);
 
     var admin = db.Kullanicilar
         .FirstOrDefault(k => k.Email.ToLower() == adminEmail.ToLower());
@@ -157,21 +255,16 @@ using (var scope = app.Services.CreateScope())
             DaireNo = "",
             SifreHash = BCrypt.Net.BCrypt.HashPassword(adminSifre),
         });
+        db.SaveChanges();
         Console.WriteLine("[Seed] Admin kullanıcısı oluşturuldu.");
     }
-    else
+    else if (forceReset)
     {
-        bool gecerli = false;
-        try { gecerli = BCrypt.Net.BCrypt.Verify(adminSifre, admin.SifreHash); } catch { }
-        if (!gecerli)
-        {
-            admin.SifreHash = BCrypt.Net.BCrypt.HashPassword(adminSifre);
-            Console.WriteLine("[Seed] Admin şifresi sıfırlandı.");
-        }
+        admin.SifreHash = BCrypt.Net.BCrypt.HashPassword(adminSifre);
         admin.Rol = ApartmanApp.Core.Enums.KullaniciRol.Admin;
+        db.SaveChanges();
+        Console.WriteLine("[Seed] Admin şifresi config ile zorla sıfırlandı (ForcePasswordReset=true).");
     }
-    db.SaveChanges();
-    Console.WriteLine($"[Seed] Giriş: {adminEmail}");
 }
 
 app.Run();

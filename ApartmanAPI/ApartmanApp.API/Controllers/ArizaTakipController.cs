@@ -10,14 +10,15 @@ namespace ApartmanApp.API.Controllers;
 [Authorize]
 public class ArizaTakipController(IArizaTakipService takipService) : ControllerBase
 {
-    private int CurrentUserId =>
-        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private bool TryGetCurrentUserId(out int id) =>
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out id) && id > 0;
 
     /// Arızayı takibe al
     [HttpPost("{id:int}/takip")]
     public async Task<IActionResult> TakipEt(int id)
     {
-        var result = await takipService.TakipEtAsync(id, CurrentUserId);
+        if (!TryGetCurrentUserId(out var currentUserId)) return Unauthorized();
+        var result = await takipService.TakipEtAsync(id, currentUserId);
         return Ok(result);
     }
 
@@ -25,7 +26,8 @@ public class ArizaTakipController(IArizaTakipService takipService) : ControllerB
     [HttpDelete("{id:int}/takip")]
     public async Task<IActionResult> TakiptenCik(int id)
     {
-        var result = await takipService.TakiptenCikAsync(id, CurrentUserId);
+        if (!TryGetCurrentUserId(out var currentUserId)) return Unauthorized();
+        var result = await takipService.TakiptenCikAsync(id, currentUserId);
         if (!result.Success)
             return NotFound(result);
         return Ok(result);
@@ -35,7 +37,8 @@ public class ArizaTakipController(IArizaTakipService takipService) : ControllerB
     [HttpGet("{id:int}/takip-durumu")]
     public async Task<IActionResult> GetTakipDurumu(int id)
     {
-        var dto = await takipService.GetTakipDurumuAsync(id, CurrentUserId);
+        if (!TryGetCurrentUserId(out var currentUserId)) return Unauthorized();
+        var dto = await takipService.GetTakipDurumuAsync(id, currentUserId);
         return Ok(dto);
     }
 

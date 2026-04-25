@@ -17,6 +17,7 @@ public class BlokController(IBlokService blokService) : ControllerBase
     }
 
     [HttpGet("detay")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetAllWithSakinler()
     {
         var result = await blokService.GetAllWithSakinlerAsync();

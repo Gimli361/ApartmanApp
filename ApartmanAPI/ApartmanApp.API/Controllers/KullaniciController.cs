@@ -68,6 +68,10 @@ public class KullaniciController(IKullaniciService kullaniciService) : Controlle
         if (CurrentUserId != id && !User.IsInRole("Admin"))
             return Forbid();
 
+        var validation = await new KullaniciUpdateValidator().ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
+
         var result = await kullaniciService.UpdateAsync(id, dto);
         if (!result.Success)
             return BadRequest(result);
@@ -81,8 +85,9 @@ public class KullaniciController(IKullaniciService kullaniciService) : Controlle
         if (CurrentUserId != id)
             return Forbid();
 
-        if (string.IsNullOrWhiteSpace(dto.EskiSifre) || string.IsNullOrWhiteSpace(dto.YeniSifre))
-            return BadRequest("Eski ve yeni şifre zorunludur.");
+        var validation = await new SifreGuncelleValidator().ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
 
         var result = await kullaniciService.UpdateSifreAsync(id, dto);
         if (!result.Success)
@@ -95,8 +100,9 @@ public class KullaniciController(IKullaniciService kullaniciService) : Controlle
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AdminSifreSifirla(int id, [FromBody] AdminSifreSifirlaDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.YeniSifre))
-            return BadRequest("Yeni şifre zorunludur.");
+        var validation = await new AdminSifreSifirlaValidator().ValidateAsync(dto);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => e.ErrorMessage));
 
         var result = await kullaniciService.AdminSifreSifirlaAsync(id, dto.YeniSifre);
         if (!result.Success)
