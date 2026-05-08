@@ -5,6 +5,7 @@ import '../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../shared/models/blok_model.dart';
 import '../../../shared/models/daire_model.dart';
 import '../../../shared/services/api_service.dart';
+import 'package:apartman_app/core/theme.dart';
 
 class BinaYonetimScreen extends ConsumerStatefulWidget {
   const BinaYonetimScreen({super.key});
@@ -69,7 +70,7 @@ class _BinaYonetimScreenState extends ConsumerState<BinaYonetimScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
           title: const Row(children: [
-            Icon(Icons.add_home_outlined, color: Colors.blue),
+            Icon(Icons.add_home_outlined, color: AppTheme.primaryColor),
             SizedBox(width: 8),
             Text('Blok Ekle'),
           ]),
@@ -165,7 +166,7 @@ class _BinaYonetimScreenState extends ConsumerState<BinaYonetimScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
           title: Row(children: [
-            const Icon(Icons.door_front_door_outlined, color: Colors.blue),
+            const Icon(Icons.door_front_door_outlined, color: AppTheme.primaryColor),
             const SizedBox(width: 8),
             Text('${blok.ad} Blok — Daire Ekle'),
           ]),
@@ -326,13 +327,13 @@ class _BinaYonetimScreenState extends ConsumerState<BinaYonetimScreen> {
                       child: ExpansionTile(
                         leading: CircleAvatar(
                           backgroundColor:
-                              Colors.blue.withValues(alpha: 0.12),
+                              AppTheme.primaryColor.withValues(alpha: 0.12),
                           child: Text(
                             blok.ad.isNotEmpty
                                 ? blok.ad[0].toUpperCase()
                                 : '?',
                             style: const TextStyle(
-                                color: Colors.blue,
+                                color: AppTheme.primaryColor,
                                 fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -349,7 +350,7 @@ class _BinaYonetimScreenState extends ConsumerState<BinaYonetimScreen> {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.add,
-                                  color: Colors.blue),
+                                  color: AppTheme.primaryColor),
                               tooltip: 'Daire Ekle',
                               onPressed: () => _daireEkle(blok),
                             ),
@@ -389,14 +390,14 @@ class _BinaYonetimScreenState extends ConsumerState<BinaYonetimScreen> {
                                                 const Icon(
                                                     Icons.person,
                                                     size: 12,
-                                                    color: Colors.blue),
+                                                    color: AppTheme.primaryColor),
                                                 const SizedBox(width: 3),
                                                 Expanded(
                                                   child: Text(
                                                     d.sakin!.adSoyad,
                                                     style: const TextStyle(
                                                         fontSize: 11,
-                                                        color: Colors.blue),
+                                                        color: AppTheme.primaryColor),
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                   ),

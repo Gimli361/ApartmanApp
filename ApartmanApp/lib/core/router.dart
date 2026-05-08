@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/profil_screen.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/home/presentation/home_screen.dart';
 import '../features/ariza/presentation/ariza_list_screen.dart';
 import '../features/ariza/presentation/ariza_create_screen.dart';
 import '../features/ariza/presentation/ariza_detail_screen.dart';
@@ -46,7 +47,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final onLogin = state.matchedLocation == '/login';
 
       if (!isLoggedIn && !onLogin) return '/login';
-      if (isLoggedIn && onLogin) return '/ana-sayfa/arizalar';
+      if (isLoggedIn && onLogin) return '/ana-sayfa';
       return null;
     },
     routes: [
@@ -57,6 +58,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => MainScaffold(child: child),
         routes: [
+          GoRoute(
+            path: '/ana-sayfa',
+            builder: (context, state) => const HomeScreen(),
+          ),
           GoRoute(
             path: '/ana-sayfa/arizalar',
             builder: (context, state) => const ArizaListScreen(),

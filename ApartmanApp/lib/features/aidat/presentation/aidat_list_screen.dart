@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/result.dart';
 import '../domain/aidat_model.dart';
@@ -52,6 +53,8 @@ class _AidatListScreenState extends ConsumerState<AidatListScreen>
   @override
   Widget build(BuildContext context) {
     final isAdmin = _isAdmin;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: isAdmin
@@ -77,10 +80,22 @@ class _AidatListScreenState extends ConsumerState<AidatListScreen>
             )
           : _AidatTab(isAdmin: false, onLoad: _load),
       floatingActionButton: isAdmin
-          ? FloatingActionButton(
-              onPressed: () => context.push('/ana-sayfa/aidatlar/yeni'),
-              tooltip: 'Yeni Aidat Ekle',
-              child: const Icon(Icons.add),
+          ? Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: cs.primary.withOpacity(isDark ? 0.3 : 0.2),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: FloatingActionButton.extended(
+                onPressed: () => context.push('/ana-sayfa/aidatlar/yeni'),
+                icon: const Icon(Icons.add),
+                label: const Text('Yeni Aidat'),
+              ),
             )
           : null,
     );
@@ -97,55 +112,94 @@ class _AidatTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(aidatProvider);
+    final cs = Theme.of(context).colorScheme;
 
     return RefreshIndicator(
+      color: cs.primary,
       onRefresh: () async => onLoad(),
       child: _buildBody(context, ref, state),
     );
   }
 
   Widget _buildBody(BuildContext context, WidgetRef ref, AidatState state) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (state.isLoading && state.aidatlar.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: cs.primary));
     }
     if (state.error != null && state.aidatlar.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 12),
-            Text(state.error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: onLoad, child: const Text('Tekrar Dene')),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: cs.error.withOpacity(0.08),
+                ),
+                child: Icon(Icons.error_outline, size: 48, color: cs.error),
+              ),
+              const SizedBox(height: 16),
+              Text(state.error!,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(color: cs.onSurfaceVariant)),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: onLoad,
+                style: FilledButton.styleFrom(minimumSize: const Size(140, 44)),
+                child: const Text('Tekrar Dene'),
+              ),
+            ],
+          ),
         ),
       );
     }
     if (state.aidatlar.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primary.withOpacity(0.08),
+              ),
+              child: Icon(Icons.receipt_long_outlined,
+                  size: 48, color: cs.primary.withOpacity(0.5)),
+            ),
+            const SizedBox(height: 16),
             Text('Henüz aidat kaydı yok',
-                style: TextStyle(color: Colors.grey, fontSize: 16)),
+                style: GoogleFonts.inter(
+                    color: cs.onSurfaceVariant, fontSize: 15)),
           ],
         ),
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
       itemCount: state.aidatlar.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, i) {
         final aidat = state.aidatlar[i];
         return _AidatTile(
           aidat: aidat,
           isAdmin: isAdmin,
           onDurumChanged: isAdmin
-              ? (d) => ref.read(aidatProvider.notifier).updateOdemeDurum(aidat.id, d)
+              ? (d) async {
+                  final result = await ref
+                      .read(aidatProvider.notifier)
+                      .updateOdemeDurum(aidat.id, d);
+                  if (!context.mounted) return;
+                  if (result is Failure<AidatModel, AppError>) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result.error.message)),
+                    );
+                  }
+                }
               : null,
         );
       },
@@ -190,21 +244,29 @@ class _OtomatikTabState extends ConsumerState<_OtomatikTab> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(otomatikAidatProvider);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       children: [
-        // Üst banner — "Bu Ayı Oluştur"
+        // Üst banner
         Container(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cs.primary.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cs.primary.withOpacity(0.15)),
+          ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline, size: 18, color: Colors.grey),
-              const SizedBox(width: 8),
+              Icon(Icons.info_outline, size: 20, color: cs.primary),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Aktif kayıtlar her gece otomatik oluşturulur.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  style: GoogleFonts.inter(
+                      fontSize: 12, color: cs.onSurfaceVariant),
                 ),
               ),
               const SizedBox(width: 8),
@@ -212,70 +274,83 @@ class _OtomatikTabState extends ConsumerState<_OtomatikTab> {
                 onPressed: _uretiliyor ? null : _uretBuAy,
                 style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                        horizontal: 12, vertical: 8),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                 child: _uretiliyor
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Bu Ayı Oluştur', style: TextStyle(fontSize: 12)),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: cs.primary))
+                    : Text('Bu Ayı Oluştur',
+                        style: GoogleFonts.inter(fontSize: 12)),
               ),
             ],
           ),
         ),
 
-        // Liste
         Expanded(
           child: RefreshIndicator(
+            color: cs.primary,
             onRefresh: () => ref.read(otomatikAidatProvider.notifier).load(),
-            child: _buildBody(context, state),
+            child: _buildBody(context, state, cs, isDark),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildBody(BuildContext context, OtomatikAidatState state) {
+  Widget _buildBody(
+      BuildContext context, OtomatikAidatState state, ColorScheme cs, bool isDark) {
     if (state.isLoading && state.liste.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: cs.primary));
     }
     if (state.error != null && state.liste.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            Icon(Icons.error_outline, size: 48, color: cs.error),
             const SizedBox(height: 12),
-            Text(state.error!, textAlign: TextAlign.center),
+            Text(state.error!, textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: cs.onSurfaceVariant)),
           ],
         ),
       );
     }
     if (state.liste.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.autorenew, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primary.withOpacity(0.08),
+              ),
+              child: Icon(Icons.autorenew,
+                  size: 48, color: cs.primary.withOpacity(0.5)),
+            ),
+            const SizedBox(height: 16),
             Text('Otomatik aidat tanımlanmamış',
-                style: TextStyle(color: Colors.grey, fontSize: 16)),
-            SizedBox(height: 8),
+                style: GoogleFonts.inter(
+                    color: cs.onSurfaceVariant, fontSize: 15)),
+            const SizedBox(height: 4),
             Text(
               'Aidat oluştururken\n"Otomatik yenile" seçeneğini işaretle.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              style: GoogleFonts.inter(
+                  color: cs.onSurfaceVariant, fontSize: 13),
             ),
           ],
         ),
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
       itemCount: state.liste.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, i) {
         final o = state.liste[i];
         return _OtomatikTile(kayit: o);
@@ -290,50 +365,75 @@ class _OtomatikTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final sonUretim = (kayit.sonUretimAy != null && kayit.sonUretimYil != null)
         ? '${_ayAd(kayit.sonUretimAy!)} ${kayit.sonUretimYil}'
         : 'Henüz üretilmedi';
 
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: (kayit.aktifMi ? Colors.green : Colors.grey)
-            .withValues(alpha: 0.15),
-        child: Icon(
-          Icons.autorenew,
-          color: kayit.aktifMi ? Colors.green : Colors.grey,
-          size: 20,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? cs.surfaceContainerHigh : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.05)
+              : const Color(0xFFE8E8E8),
         ),
       ),
-      title: Text(
-        'Daire ${kayit.daireNo} — ${kayit.kullaniciAdSoyad}',
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            '₺${kayit.tutar.toStringAsFixed(2)} / ay',
-            style: const TextStyle(fontSize: 13),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: (kayit.aktifMi ? Colors.green : Colors.grey)
+                  .withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.autorenew,
+              color: kayit.aktifMi ? Colors.green : Colors.grey,
+              size: 22,
+            ),
           ),
-          Text(
-            'Son üretim: $sonUretim',
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Daire ${kayit.daireNo} — ${kayit.kullaniciAdSoyad}',
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: cs.onSurface),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '₺${kayit.tutar.toStringAsFixed(2)} / ay',
+                  style: GoogleFonts.inter(
+                      fontSize: 13, color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Son üretim: $sonUretim',
+                  style: GoogleFonts.inter(fontSize: 11, color: cs.outline),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
-      isThreeLine: true,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
           // Tutar düzenle
           IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 20),
+            icon: Icon(Icons.edit_outlined, size: 20, color: cs.outline),
             tooltip: 'Tutarı Düzenle',
             onPressed: () => _tutarDuzenle(context, ref),
           ),
           // Toggle
           Switch(
             value: kayit.aktifMi,
+            activeColor: cs.primary,
             onChanged: (_) =>
                 ref.read(otomatikAidatProvider.notifier).toggle(kayit.id),
           ),
@@ -355,7 +455,6 @@ class _OtomatikTile extends ConsumerWidget {
               const TextInputType.numberWithOptions(decimal: true),
           decoration: const InputDecoration(
             labelText: 'Tutar (₺)',
-            border: OutlineInputBorder(),
           ),
           autofocus: true,
         ),
@@ -382,6 +481,7 @@ class _OtomatikTile extends ConsumerWidget {
                     result is Success ? Colors.green : Colors.red,
               ));
             },
+            style: FilledButton.styleFrom(minimumSize: const Size(80, 40)),
             child: const Text('Kaydet'),
           ),
         ],
@@ -396,7 +496,7 @@ class _OtomatikTile extends ConsumerWidget {
       ][ay];
 }
 
-// ─── Aidat tile (mevcut) ─────────────────────────────────────────────────────
+// ─── Aidat tile ──────────────────────────────────────────────────────────────
 
 class _AidatTile extends StatelessWidget {
   const _AidatTile({
@@ -411,44 +511,105 @@ class _AidatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final (color, icon, label) = _durumStyle(aidat.odemeDurumu);
 
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.15),
-        child: Icon(icon, color: color, size: 20),
-      ),
-      title: Text(
-        '${_ayAd(aidat.ay)} ${aidat.yil}',
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '₺${aidat.tutar.toStringAsFixed(2)}',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isDark ? cs.surfaceContainerHigh : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: aidat.odemeDurumu == OdemeDurumu.gecikti
+              ? cs.error.withOpacity(0.3)
+              : (isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : const Color(0xFFE8E8E8)),
+          width: aidat.odemeDurumu == OdemeDurumu.gecikti ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
-          if (isAdmin) ...[
-            Text(aidat.kullaniciAdSoyad,
-                style: const TextStyle(fontSize: 13)),
-            Text('Daire ${aidat.daireNo}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          ],
-          if (aidat.odemeTarihi != null)
-            Text(
-              'Ödendi: ${DateFormat('d MMMM y', 'tr').format(aidat.odemeTarihi!.toLocal())}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
         ],
       ),
-      trailing: isAdmin
-          ? _AdminDurumMenu(
-              current: aidat.odemeDurumu,
-              onChanged: onDurumChanged,
-            )
-          : _DurumChip(label: label, color: color),
-      isThreeLine: isAdmin,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_ayAd(aidat.ay)} ${aidat.yil}',
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: cs.onSurface),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '₺${aidat.tutar.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                      decoration: aidat.odemeDurumu == OdemeDurumu.odendi
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                  ),
+                  if (isAdmin) ...[
+                    const SizedBox(height: 2),
+                    Text(aidat.kullaniciAdSoyad,
+                        style: GoogleFonts.inter(
+                            fontSize: 12, color: cs.onSurfaceVariant)),
+                    Text('Daire ${aidat.daireNo}',
+                        style: GoogleFonts.inter(
+                            fontSize: 11, color: cs.outline)),
+                  ],
+                  if (aidat.odemeTarihi != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle,
+                              size: 12, color: Colors.green[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            DateFormat('d MMMM y', 'tr')
+                                .format(aidat.odemeTarihi!.toLocal()),
+                            style: GoogleFonts.inter(
+                                fontSize: 11, color: cs.outline),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            isAdmin
+                ? _AdminDurumMenu(
+                    current: aidat.odemeDurumu,
+                    onChanged: onDurumChanged,
+                  )
+                : _DurumChip(label: label, color: color),
+          ],
+        ),
+      ),
     );
   }
 
@@ -477,14 +638,15 @@ class _DurumChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          style: GoogleFonts.inter(
+              color: color, fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -500,18 +662,19 @@ class _AdminDurumMenu extends StatelessWidget {
     return PopupMenuButton<OdemeDurumu>(
       onSelected: onChanged,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(label,
-                style: TextStyle(
+                style: GoogleFonts.inter(
                     color: color,
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600)),
             const SizedBox(width: 4),
             Icon(Icons.arrow_drop_down, color: color, size: 16),

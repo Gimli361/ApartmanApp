@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/result.dart';
 import '../domain/oylama_model.dart';
@@ -38,50 +39,99 @@ class _OylamaCreateScreenState extends ConsumerState<OylamaCreateScreen> {
   @override
   Widget build(BuildContext context) {
     final fmt = DateFormat('dd.MM.yyyy HH:mm');
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Yeni Oylama')),
+      appBar: AppBar(
+          title: Text('Yeni Oylama',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Oylama Oluştur',
+                style: GoogleFonts.inter(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: cs.primary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Sakinler için yeni bir oylama başlatın.',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+
               // Başlık
+              _sectionLabel('BAŞLIK', cs),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _baslikCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Başlık *',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  hintText: 'Oylama başlığını girin',
+                  prefixIcon: Icon(Icons.title, color: cs.outline),
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Başlık zorunludur'
                     : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               // Açıklama
+              _sectionLabel('AÇIKLAMA', cs),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _aciklamaCtrl,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Açıklama (opsiyonel)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  hintText: 'Açıklama girin (opsiyonel)',
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(bottom: 40),
+                    child: Icon(Icons.description_outlined, color: cs.outline),
+                  ),
+                  alignLabelWithHint: true,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               // Bitiş tarihi
-              InkWell(
+              _sectionLabel('BİTİŞ TARİHİ', cs),
+              const SizedBox(height: 8),
+              GestureDetector(
                 onTap: _pickDate,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Bitiş Tarihi *',
-                    border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.calendar_today),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? cs.surfaceContainer : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: cs.outlineVariant),
                   ),
-                  child: Text(fmt.format(_bitisTarihi)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_outlined,
+                          size: 20, color: cs.outline),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          fmt.format(_bitisTarihi),
+                          style: GoogleFonts.inter(
+                              fontSize: 14, color: cs.onSurface),
+                        ),
+                      ),
+                      Icon(Icons.edit_outlined, size: 18, color: cs.outline),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -89,11 +139,13 @@ class _OylamaCreateScreenState extends ConsumerState<OylamaCreateScreen> {
               // Seçenekler
               Row(
                 children: [
-                  Text('Seçenekler',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('SEÇENEKLER',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: cs.outline,
+                        letterSpacing: 1.2,
+                      )),
                   const Spacer(),
                   TextButton.icon(
                     onPressed: _secenekCtrls.length >= 8
@@ -115,12 +167,30 @@ class _OylamaCreateScreenState extends ConsumerState<OylamaCreateScreen> {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Row(
                     children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: cs.primary.withOpacity(0.1),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${i + 1}',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              color: cs.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: TextFormField(
                           controller: _secenekCtrls[i],
                           decoration: InputDecoration(
-                            labelText: 'Seçenek ${i + 1}',
-                            border: const OutlineInputBorder(),
+                            hintText: 'Seçenek ${i + 1}',
                           ),
                           validator: (v) =>
                               (v == null || v.trim().isEmpty)
@@ -131,8 +201,8 @@ class _OylamaCreateScreenState extends ConsumerState<OylamaCreateScreen> {
                       if (_secenekCtrls.length > 2) ...[
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.remove_circle_outline,
-                              color: Colors.red),
+                          icon: Icon(Icons.remove_circle_outline,
+                              color: cs.error, size: 22),
                           onPressed: () {
                             setState(() {
                               _secenekCtrls[i].dispose();
@@ -146,17 +216,28 @@ class _OylamaCreateScreenState extends ConsumerState<OylamaCreateScreen> {
                 );
               }),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
-              SizedBox(
+              Container(
                 width: double.infinity,
-                child: ElevatedButton.icon(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.primary.withOpacity(isDark ? 0.3 : 0.2),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: FilledButton.icon(
                   onPressed: _isLoading ? null : _submit,
                   icon: _isLoading
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Icon(Icons.check),
                   label: const Text('Oluştur'),
@@ -165,6 +246,18 @@ class _OylamaCreateScreenState extends ConsumerState<OylamaCreateScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text, ColorScheme cs) {
+    return Text(
+      text,
+      style: GoogleFonts.inter(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: cs.outline,
+        letterSpacing: 1.2,
       ),
     );
   }

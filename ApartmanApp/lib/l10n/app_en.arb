@@ -1,0 +1,22 @@
+{
+  "@@locale": "en",
+
+  "appName": "ApartmanApp",
+  "loading": "Loading...",
+  "errorTitle": "Error",
+  "successTitle": "Success",
+  "actionCancel": "Cancel",
+  "actionConfirm": "Confirm",
+  "actionSave": "Save",
+  "actionDelete": "Delete",
+
+  "loginButton": "Sign In",
+  "logoutButton": "Sign Out",
+  "fieldEmail": "Email",
+  "fieldPassword": "Password",
+
+  "navArizalar": "Issues",
+  "navAidatlar": "Dues",
+  "navBildirimler": "Notifications",
+  "navOylamalar": "Polls"
+}

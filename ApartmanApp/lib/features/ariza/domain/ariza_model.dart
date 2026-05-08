@@ -5,7 +5,7 @@ class ArizaModel {
   final String aciklama;
   final ArizaDurum durum;
   final ArizaOncelik oncelik;
-  final int bildirenId;
+  final int? bildirenId;
   final String bildirenAdSoyad;
   final String bildirenDaireNo;
   final DateTime tarih;
@@ -20,7 +20,7 @@ class ArizaModel {
     required this.aciklama,
     required this.durum,
     required this.oncelik,
-    required this.bildirenId,
+    this.bildirenId,
     required this.bildirenAdSoyad,
     required this.bildirenDaireNo,
     required this.tarih,
@@ -37,7 +37,7 @@ class ArizaModel {
       aciklama: json['aciklama'] as String? ?? '',
       durum: ArizaDurum.fromString(json['durum'].toString()),
       oncelik: ArizaOncelik.fromString(json['oncelik'].toString()),
-      bildirenId: json['bildirenId'] as int? ?? 0,
+      bildirenId: json['bildirenId'] as int?,
       bildirenAdSoyad: json['bildirenAdSoyad'] as String? ?? '',
       bildirenDaireNo: json['bildirenDaireNo'] as String? ?? '',
       tarih: DateTime.parse(json['tarih'] as String),

@@ -1,0 +1,22 @@
+{
+  "@@locale": "tr",
+
+  "appName": "ApartmanApp",
+  "loading": "Yükleniyor...",
+  "errorTitle": "Hata",
+  "successTitle": "Başarılı",
+  "actionCancel": "İptal",
+  "actionConfirm": "Onayla",
+  "actionSave": "Kaydet",
+  "actionDelete": "Sil",
+
+  "loginButton": "Giriş Yap",
+  "logoutButton": "Çıkış Yap",
+  "fieldEmail": "E-posta",
+  "fieldPassword": "Şifre",
+
+  "navArizalar": "Arızalar",
+  "navAidatlar": "Aidatlar",
+  "navBildirimler": "Bildirimler",
+  "navOylamalar": "Oylamalar"
+}
