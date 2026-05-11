@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../domain/ariza_model.dart';
 import '../../../features/auth/presentation/providers/auth_provider.dart';
@@ -41,56 +40,29 @@ class _ArizaCreateScreenState extends ConsumerState<ArizaCreateScreen> {
   }
 
   void _showImageSourceSheet() {
-    final cs = Theme.of(context).colorScheme;
     showModalBottomSheet(
       context: context,
       builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: cs.outlineVariant,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.camera_alt, color: cs.primary),
-                ),
-                title: Text('Kamera', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: cs.secondary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.photo_library, color: cs.secondary),
-                ),
-                title: Text('Galeriden Seç', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Kamera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Galeriden Seç'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -139,7 +111,7 @@ class _ArizaCreateScreenState extends ConsumerState<ArizaCreateScreen> {
       context.pop();
     } else {
       final err =
-          ref.read(arizaListProvider).errorMessage ?? 'Arıza bildirilemedi. Lütfen tekrar deneyin.';
+          ref.read(arizaListProvider).errorMessage ?? 'Bir hata oluştu.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(err), backgroundColor: Colors.red),
       );
@@ -148,178 +120,105 @@ class _ArizaCreateScreenState extends ConsumerState<ArizaCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      appBar: AppBar(title: Text('Arıza Bildir', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+      appBar: AppBar(title: const Text('Arıza Bildir')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Sayfa başlığı
-              Text(
-                'Yeni Talep',
-                style: GoogleFonts.inter(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: cs.primary,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Bakım sorunu veya hizmet talebi bildirin.',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Konum seçimi
-              _sectionLabel('KONUM', cs),
-              const SizedBox(height: 8),
-              _KonumSecici(
-                ortakAlan: _ortakAlan,
-                onChanged: (val) => setState(() => _ortakAlan = val),
-              ),
-              const SizedBox(height: 20),
-
               // Başlık
-              _sectionLabel('BAŞLIK', cs),
-              const SizedBox(height: 8),
               TextFormField(
                 controller: _baslikCtrl,
                 textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  hintText: 'Arızayı kısaca tanımlayın',
-                  prefixIcon: Icon(Icons.title, color: cs.outline),
+                decoration: const InputDecoration(
+                  labelText: 'Başlık',
+                  prefixIcon: Icon(Icons.title),
+                  border: OutlineInputBorder(),
                 ),
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Başlık boş olamaz.' : null,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // Açıklama
-              _sectionLabel('AÇIKLAMA', cs),
-              const SizedBox(height: 8),
               TextFormField(
                 controller: _aciklamaCtrl,
                 maxLines: 4,
                 textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  hintText: 'Arızayı detaylı şekilde açıklayın...',
+                decoration: const InputDecoration(
+                  labelText: 'Açıklama',
+                  prefixIcon: Icon(Icons.description_outlined),
+                  border: OutlineInputBorder(),
                   alignLabelWithHint: true,
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(bottom: 60),
-                    child: Icon(Icons.description_outlined, color: cs.outline),
-                  ),
                 ),
                 validator: (v) => v == null || v.trim().isEmpty
                     ? 'Açıklama boş olamaz.'
                     : null,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
+              // Konum seçimi: Bloğum / Ortak Alan
+              Text('Konum', style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 8),
+              _KonumSecici(
+                ortakAlan: _ortakAlan,
+                onChanged: (val) => setState(() => _ortakAlan = val),
+              ),
+              const SizedBox(height: 16),
 
               // Öncelik seçimi
-              _sectionLabel('ÖNCELİK', cs),
+              Text('Öncelik',
+                  style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(height: 8),
-              Row(
+              Wrap(
+                spacing: 8,
                 children: ArizaOncelik.values.map((o) {
                   final selected = _oncelik == o;
-                  final color = _oncelikColor(o);
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                          right: o != ArizaOncelik.values.last ? 8 : 0),
-                      child: GestureDetector(
-                        onTap: () => setState(() => _oncelik = o),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? color.withOpacity(isDark ? 0.2 : 0.1)
-                                : (isDark
-                                    ? cs.surfaceContainerHigh
-                                    : cs.surfaceContainerLow),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: selected
-                                  ? color.withOpacity(0.5)
-                                  : (isDark
-                                      ? cs.outlineVariant
-                                      : const Color(0xFFE0E0E0)),
-                              width: selected ? 2 : 1,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                _oncelikIcon(o),
-                                color: selected ? color : cs.onSurfaceVariant,
-                                size: 24,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                o.label,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: selected ? color : cs.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  return ChoiceChip(
+                    label: Text(o.label),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _oncelik = o),
                   );
                 }).toList(),
               ),
               const SizedBox(height: 20),
 
               // Fotoğraf seçimi
-              _sectionLabel('FOTOĞRAF', cs),
+              Text('Fotoğraf (İsteğe Bağlı)',
+                  style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(height: 8),
-              GestureDetector(
+              InkWell(
                 onTap: _showImageSourceSheet,
+                borderRadius: BorderRadius.circular(12),
                 child: Container(
                   height: 160,
                   decoration: BoxDecoration(
-                    border: Border.all(
-                      color: isDark ? cs.outlineVariant : const Color(0xFFD0D0D0),
-                      width: _foto != null ? 0 : 2,
-                      strokeAlign: BorderSide.strokeAlignInside,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    color: isDark
-                        ? cs.surfaceContainerHigh
-                        : cs.surfaceContainerLow,
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey[50],
                   ),
                   child: _foto != null
                       ? Stack(
                           fit: StackFit.expand,
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(11),
                               child: Image.file(_foto!, fit: BoxFit.cover),
                             ),
                             Positioned(
-                              top: 8,
-                              right: 8,
+                              top: 6,
+                              right: 6,
                               child: GestureDetector(
                                 onTap: () => setState(() => _foto = null),
                                 child: Container(
-                                  decoration: BoxDecoration(
-                                    color: cs.error.withOpacity(0.9),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
                                     shape: BoxShape.circle,
                                   ),
-                                  padding: const EdgeInsets.all(6),
+                                  padding: const EdgeInsets.all(4),
                                   child: const Icon(Icons.close,
                                       color: Colors.white, size: 16),
                                 ),
@@ -330,47 +229,30 @@ class _ArizaCreateScreenState extends ConsumerState<ArizaCreateScreen> {
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_a_photo_outlined,
-                                size: 36, color: cs.onSurfaceVariant),
+                            Icon(Icons.add_photo_alternate_outlined,
+                                size: 40, color: Colors.grey[400]),
                             const SizedBox(height: 8),
-                            Text(
-                              'Fotoğraf ekle',
-                              style: GoogleFonts.inter(
-                                color: cs.onSurfaceVariant,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                            Text('Fotoğraf ekle',
+                                style: TextStyle(color: Colors.grey[500])),
                           ],
                         ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
 
               // Gönder butonu
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.primary.withOpacity(isDark ? 0.3 : 0.2),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: FilledButton.icon(
-                  onPressed: _isSubmitting ? null : _submit,
-                  icon: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.send),
-                  label: Text(_isSubmitting ? 'Gönderiliyor...' : 'Bildir'),
-                ),
+              FilledButton(
+                onPressed: _isSubmitting ? null : _submit,
+                style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50)),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Bildir'),
               ),
             ],
           ),
@@ -378,32 +260,6 @@ class _ArizaCreateScreenState extends ConsumerState<ArizaCreateScreen> {
       ),
     );
   }
-
-  Widget _sectionLabel(String text, ColorScheme cs) {
-    return Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: cs.outline,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
-
-  Color _oncelikColor(ArizaOncelik o) => switch (o) {
-        ArizaOncelik.dusuk => Colors.green,
-        ArizaOncelik.orta => Colors.orange,
-        ArizaOncelik.yuksek => Colors.red,
-        ArizaOncelik.kritik => const Color(0xFFD32F2F),
-      };
-
-  IconData _oncelikIcon(ArizaOncelik o) => switch (o) {
-        ArizaOncelik.dusuk => Icons.arrow_downward,
-        ArizaOncelik.orta => Icons.remove,
-        ArizaOncelik.yuksek => Icons.arrow_upward,
-        ArizaOncelik.kritik => Icons.priority_high,
-      };
 }
 
 // ─── Konum seçici: Bloğum / Ortak Alan ───────────────────────────────────────
@@ -416,7 +272,7 @@ class _KonumSecici extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         Expanded(
@@ -426,7 +282,7 @@ class _KonumSecici extends StatelessWidget {
             subtitle: 'Dairemi veya bloğumu etkiliyor',
             selected: !ortakAlan,
             onTap: () => onChanged(false),
-            color: cs.primary,
+            color: scheme.primary,
           ),
         ),
         const SizedBox(width: 10),
@@ -437,7 +293,7 @@ class _KonumSecici extends StatelessWidget {
             subtitle: 'Havuz, otopark, bahçe vb.',
             selected: ortakAlan,
             onTap: () => onChanged(true),
-            color: cs.secondary,
+            color: scheme.secondary,
           ),
         ),
       ],
@@ -464,57 +320,40 @@ class _KonumTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? color.withOpacity(isDark ? 0.15 : 0.08)
-              : (isDark ? cs.surfaceContainerHigh : Colors.white),
-          borderRadius: BorderRadius.circular(16),
+          color: selected ? color.withValues(alpha: 0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected
-                ? color.withOpacity(0.5)
-                : (isDark ? cs.outlineVariant : const Color(0xFFE0E0E0)),
+            color: selected ? color : Colors.grey[300]!,
             width: selected ? 2 : 1,
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: selected
-                    ? color.withOpacity(0.15)
-                    : cs.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon,
-                  size: 20,
-                  color: selected ? color : cs.onSurfaceVariant),
+            Row(
+              children: [
+                Icon(icon, size: 18, color: selected ? color : Colors.grey),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: selected ? color : Colors.grey[700],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: selected ? color : cs.onSurface,
-              ),
-            ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               subtitle,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                color: cs.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
             ),
           ],
         ),

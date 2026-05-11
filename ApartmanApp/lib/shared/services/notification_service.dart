@@ -26,8 +26,6 @@ class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localPlugin =
       FlutterLocalNotificationsPlugin();
-  StreamSubscription<String>? _tokenRefreshSub;
-  int? _currentUserId;
 
   NotificationService(this._api);
 
@@ -68,26 +66,11 @@ class NotificationService {
     // Arka plandayken bildirimi tıkladı → yönlendir
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageTap);
 
-    // Token al ve yenilenince backend ile tekrar senkronize et
+    // Token al ve yenilenince logla
     final token = await _messaging.getToken();
     debugPrint('[FCM Token] $token');
-    _tokenRefreshSub?.cancel();
-    _tokenRefreshSub = _messaging.onTokenRefresh.listen((token) async {
-      debugPrint('[FCM Token Refresh] $token');
-
-      final currentUserId = _currentUserId;
-      if (currentUserId == null) return;
-
-      try {
-        await _api.dio.put(
-          '/api/kullanici/$currentUserId/fcm-token',
-          data: {'token': token},
-        );
-        debugPrint('[FCM] Yenilenen token backend\'e gönderildi.');
-      } catch (e) {
-        debugPrint('[FCM] Yenilenen token gönderilemedi: $e');
-      }
-    });
+    _messaging.onTokenRefresh
+        .listen((t) => debugPrint('[FCM Token Refresh] $t'));
   }
 
   // ────────────────────────────────────────────────
@@ -98,8 +81,7 @@ class NotificationService {
     // Android kanalını oluştur
     await _localPlugin
         .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_androidChannel);
 
     const initSettings = InitializationSettings(
@@ -170,7 +152,7 @@ class NotificationService {
     final tip = message.data['tip'] as String?;
     return switch (tip) {
       'YeniAriza' || 'ArizaDurum' => '/ana-sayfa/arizalar',
-      'Duyuru' || 'DaireMesaj' || 'BlokMesaj' => '/ana-sayfa/bildirimler',
+      'Duyuru' || 'DaireMesaj' => '/ana-sayfa/bildirimler',
       _ => '/ana-sayfa/bildirimler',
     };
   }
@@ -183,7 +165,6 @@ class NotificationService {
   /// Login/otomatik giriş sonrası FCM token'ı backend'e gönder.
   /// ApiService'in auth token'ı set edilmiş olmalı.
   Future<void> sendTokenToServer(int kullaniciId) async {
-    _currentUserId = kullaniciId;
     try {
       final token = await _messaging.getToken();
       if (token == null) return;
@@ -191,24 +172,23 @@ class NotificationService {
         '/api/kullanici/$kullaniciId/fcm-token',
         data: {'token': token},
       );
-      debugPrint(
-        '[FCM] Token backend\'e gönderildi: ${token.substring(0, 20)}...',
-      );
+      debugPrint('[FCM] Token backend\'e gönderildi: ${token.substring(0, 20)}...');
     } catch (e) {
       debugPrint('[FCM] Token gönderilemedi: $e');
     }
   }
 
   void dispose() {
-    _tokenRefreshSub?.cancel();
     _navController.close();
     _refreshController.close();
   }
 }
 
-final notificationServiceProvider = Provider<NotificationService>((ref) {
-  final api = ref.read(apiServiceProvider);
-  final service = NotificationService(api);
-  ref.onDispose(service.dispose);
-  return service;
-});
+final notificationServiceProvider = Provider<NotificationService>(
+  (ref) {
+    final api = ref.read(apiServiceProvider);
+    final service = NotificationService(api);
+    ref.onDispose(service.dispose);
+    return service;
+  },
+);

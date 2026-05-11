@@ -73,8 +73,7 @@ class AidatNotifier extends StateNotifier<AidatState> {
     return result;
   }
 
-  Future<Result<AidatModel, AppError>> updateOdemeDurum(
-      int id, OdemeDurumu durum) async {
+  Future<void> updateOdemeDurum(int id, OdemeDurumu durum) async {
     final result = await _repo.updateOdemeDurum(id, durum);
     if (result is Success<AidatModel, AppError>) {
       state = state.copyWith(
@@ -82,10 +81,7 @@ class AidatNotifier extends StateNotifier<AidatState> {
             .map((a) => a.id == id ? result.data : a)
             .toList(),
       );
-    } else if (result is Failure<AidatModel, AppError>) {
-      state = state.copyWith(error: result.error.message);
     }
-    return result;
   }
 }
 

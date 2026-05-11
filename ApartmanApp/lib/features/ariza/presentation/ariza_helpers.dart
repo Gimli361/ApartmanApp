@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import '../domain/ariza_model.dart';
-import 'package:apartman_app/core/theme.dart';
 
 Color durumColor(ArizaDurum durum) => switch (durum) {
       ArizaDurum.beklemede => Colors.orange,
-      ArizaDurum.inceleniyor => AppTheme.primaryColor,
+      ArizaDurum.inceleniyor => Colors.blue,
       ArizaDurum.tamamlandi => Colors.green,
       ArizaDurum.reddedildi => Colors.red,
     };
 
 Color oncelikColor(ArizaOncelik oncelik) => switch (oncelik) {
       ArizaOncelik.dusuk => Colors.grey,
-      ArizaOncelik.orta => AppTheme.primaryColor,
+      ArizaOncelik.orta => Colors.blue,
       ArizaOncelik.yuksek => Colors.orange,
       ArizaOncelik.kritik => Colors.red,
     };

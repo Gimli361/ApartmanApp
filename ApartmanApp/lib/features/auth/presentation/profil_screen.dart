@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/result.dart';
 import '../../../shared/models/blok_model.dart';
 import '../../../shared/models/daire_model.dart';
@@ -33,13 +32,9 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen>
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final user = ref.watch(authProvider).user;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('Profil',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        title: const Text('Profil'),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -178,65 +173,44 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Hero avatar ──
             Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: cs.primary.withOpacity(0.08),
-                      border: Border.all(
-                        color: cs.primary.withOpacity(0.3),
-                        width: 3,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        user?.adSoyad.isNotEmpty == true
-                            ? user!.adSoyad[0].toUpperCase()
-                            : '?',
-                        style: GoogleFonts.inter(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: cs.primary,
-                        ),
-                      ),
-                    ),
+              child: CircleAvatar(
+                radius: 36,
+                backgroundColor:
+                    Theme.of(context).colorScheme.primaryContainer,
+                child: Text(
+                  user?.adSoyad.isNotEmpty == true
+                      ? user!.adSoyad[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    user?.email ?? '',
-                    style: GoogleFonts.inter(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                user?.email ?? '',
+                style: const TextStyle(color: Colors.grey),
               ),
             ),
             const SizedBox(height: 32),
-
-            // ── Form ──
-            _sectionLabel('KİŞİSEL BİLGİLER', cs),
-            const SizedBox(height: 12),
             TextFormField(
               controller: _adCtrl,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Ad',
-                prefixIcon: Icon(Icons.person_outline, color: cs.outline),
+                border: OutlineInputBorder(),
               ),
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'Ad boş olamaz.' : null,
@@ -244,23 +218,19 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _soyadCtrl,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Soyad',
-                prefixIcon: Icon(Icons.person_outline, color: cs.outline),
+                border: OutlineInputBorder(),
               ),
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'Soyad boş olamaz.' : null,
             ),
-            const SizedBox(height: 24),
-
-            _sectionLabel('DAİRE BİLGİSİ', cs),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             _bloklarYukleniyor
-                ? SizedBox(
+                ? const SizedBox(
                     height: 48,
                     child: Center(
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: cs.primary)))
+                        child: CircularProgressIndicator(strokeWidth: 2)))
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -269,10 +239,9 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
                         child: DropdownButtonFormField<BlokModel?>(
                           value: _secilenBlok,
                           isExpanded: true,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Blok',
-                            prefixIcon: Icon(Icons.apartment_outlined,
-                                color: cs.outline),
+                            border: OutlineInputBorder(),
                           ),
                           items: [
                             const DropdownMenuItem<BlokModel?>(
@@ -299,16 +268,13 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
                             ? DropdownButtonFormField<DaireModel?>(
                                 value: _secilenDaire,
                                 isExpanded: true,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Daire',
-                                  prefixIcon: Icon(
-                                      Icons.door_front_door_outlined,
-                                      color: cs.outline),
+                                  border: OutlineInputBorder(),
                                 ),
-                                validator: (v) =>
-                                    v == null && _daireCtrl.text.trim().isEmpty
-                                        ? 'Daire seçiniz.'
-                                        : null,
+                                validator: (v) => v == null && _daireCtrl.text.trim().isEmpty
+                                    ? 'Daire seçiniz.'
+                                    : null,
                                 items: [
                                   const DropdownMenuItem<DaireModel?>(
                                     value: null,
@@ -325,63 +291,34 @@ class _BilgilerTabState extends ConsumerState<_BilgilerTab> {
                               )
                             : TextFormField(
                                 controller: _daireCtrl,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Daire No',
                                   hintText: 'Örn: 3, 12',
-                                  prefixIcon: Icon(
-                                      Icons.door_front_door_outlined,
-                                      color: cs.outline),
+                                  border: OutlineInputBorder(),
                                 ),
-                                validator: (v) =>
-                                    v == null || v.trim().isEmpty
-                                        ? 'Daire no boş olamaz.'
-                                        : null,
+                                validator: (v) => v == null || v.trim().isEmpty
+                                    ? 'Daire no boş olamaz.'
+                                    : null,
                               ),
                       ),
                     ],
                   ),
-            const SizedBox(height: 32),
-
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: cs.primary.withOpacity(isDark ? 0.3 : 0.2),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _isLoading ? null : _kaydet,
-                  icon: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.save_outlined),
-                  label: const Text('Kaydet'),
-                ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _isLoading ? null : _kaydet,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text('Kaydet'),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _sectionLabel(String text, ColorScheme cs) {
-    return Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: cs.outline,
-        letterSpacing: 1.2,
       ),
     );
   }
@@ -445,52 +382,21 @@ class _SifreTabState extends ConsumerState<_SifreTab> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: Form(
         key: _formKey,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Güvenlik bilgi kutusu
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: cs.primary.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: cs.primary.withOpacity(0.15)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.shield_outlined,
-                      color: cs.primary, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Güvenliğiniz için şifrenizi düzenli olarak değiştirin.',
-                      style: GoogleFonts.inter(
-                          fontSize: 13, color: cs.onSurfaceVariant),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
             TextFormField(
               controller: _eskiCtrl,
               obscureText: _eskiGizli,
               decoration: InputDecoration(
                 labelText: 'Mevcut Şifre',
-                prefixIcon: Icon(Icons.lock_outline, color: cs.outline),
+                border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: Icon(
-                      _eskiGizli
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      color: cs.outline),
+                      _eskiGizli ? Icons.visibility_off : Icons.visibility),
                   onPressed: () =>
                       setState(() => _eskiGizli = !_eskiGizli),
                 ),
@@ -505,14 +411,10 @@ class _SifreTabState extends ConsumerState<_SifreTab> {
               obscureText: _yeniGizli,
               decoration: InputDecoration(
                 labelText: 'Yeni Şifre',
-                prefixIcon:
-                    Icon(Icons.lock_reset_outlined, color: cs.outline),
+                border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: Icon(
-                      _yeniGizli
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      color: cs.outline),
+                      _yeniGizli ? Icons.visibility_off : Icons.visibility),
                   onPressed: () =>
                       setState(() => _yeniGizli = !_yeniGizli),
                 ),
@@ -527,39 +429,26 @@ class _SifreTabState extends ConsumerState<_SifreTab> {
             TextFormField(
               controller: _tekrarCtrl,
               obscureText: true,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Yeni Şifre (Tekrar)',
-                prefixIcon: Icon(Icons.lock_outline, color: cs.outline),
+                border: OutlineInputBorder(),
               ),
               validator: (v) => v != _yeniCtrl.text
                   ? 'Şifreler eşleşmiyor.'
                   : null,
             ),
-            const SizedBox(height: 32),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: cs.primary.withOpacity(isDark ? 0.3 : 0.2),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _isLoading ? null : _sifreDegistir,
-                  icon: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.lock_outline),
-                  label: const Text('Şifreyi Değiştir'),
-                ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _isLoading ? null : _sifreDegistir,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text('Şifreyi Değiştir'),
               ),
             ),
           ],

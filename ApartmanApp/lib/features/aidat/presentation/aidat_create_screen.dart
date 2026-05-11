@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/result.dart';
 import '../domain/aidat_model.dart';
 import '../../../features/auth/domain/user_model.dart';
@@ -125,51 +124,26 @@ class _AidatCreateScreenState extends ConsumerState<AidatCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      appBar: AppBar(
-          title: Text('Yeni Aidat Kaydı',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+      appBar: AppBar(title: const Text('Yeni Aidat Kaydı')),
       body: _kullanicilarYukleniyor
-          ? Center(child: CircularProgressIndicator(color: cs.primary))
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Aidat Kaydı',
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                        color: cs.primary,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Sakin için aylık aidat oluşturun.',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
                     // Sakin seçimi
-                    _sectionLabel('SAKİN', cs),
-                    const SizedBox(height: 8),
                     DropdownButtonFormField<UserModel>(
                       value: _seciliKullanici,
-                      decoration: InputDecoration(
-                        hintText: 'Sakin seçin',
-                        prefixIcon:
-                            Icon(Icons.person_outline, color: cs.outline),
+                      decoration: const InputDecoration(
+                        labelText: 'Sakin',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_outline),
                       ),
+                      hint: const Text('Sakin seçin'),
                       items: _kullanicilar
                           .map((u) => DropdownMenuItem(
                                 value: u,
@@ -183,29 +157,17 @@ class _AidatCreateScreenState extends ConsumerState<AidatCreateScreen> {
                           ? 'Sakin seçimi zorunludur.'
                           : null,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Tutar
-                    _sectionLabel('TUTAR', cs),
-                    const SizedBox(height: 8),
                     TextFormField(
                       controller: _tutarCtrl,
                       keyboardType: const TextInputType.numberWithOptions(
                           decimal: true),
-                      decoration: InputDecoration(
-                        hintText: '0.00',
-                        prefixIcon:
-                            Icon(Icons.payments_outlined, color: cs.outline),
-                        prefixText: '₺ ',
-                        prefixStyle: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: cs.primary,
-                        ),
-                      ),
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                      decoration: const InputDecoration(
+                        labelText: 'Tutar (₺)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.payments_outlined),
                       ),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
@@ -219,20 +181,17 @@ class _AidatCreateScreenState extends ConsumerState<AidatCreateScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Ay & Yıl
-                    _sectionLabel('DÖNEM', cs),
-                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<int>(
                             value: _ay,
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Ay',
-                              prefixIcon: Icon(Icons.calendar_month_outlined,
-                                  color: cs.outline),
+                              border: OutlineInputBorder(),
                             ),
                             items: List.generate(
                               12,
@@ -249,10 +208,9 @@ class _AidatCreateScreenState extends ConsumerState<AidatCreateScreen> {
                         Expanded(
                           child: DropdownButtonFormField<int>(
                             value: _yil,
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Yıl',
-                              prefixIcon: Icon(Icons.date_range_outlined,
-                                  color: cs.outline),
+                              border: OutlineInputBorder(),
                             ),
                             items: List.generate(
                               5,
@@ -268,105 +226,49 @@ class _AidatCreateScreenState extends ConsumerState<AidatCreateScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Otomatik yenile toggle
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? cs.surfaceContainerHigh
-                            : cs.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: _otomatikYenile
-                              ? Colors.green.withOpacity(0.3)
-                              : (isDark
-                                  ? cs.outlineVariant
-                                  : const Color(0xFFE0E0E0)),
-                        ),
-                      ),
+                    Card(
+                      margin: EdgeInsets.zero,
                       child: SwitchListTile(
                         value: _otomatikYenile,
                         onChanged: (v) =>
                             setState(() => _otomatikYenile = v),
-                        activeColor: Colors.green,
-                        secondary: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: (_otomatikYenile
-                                    ? Colors.green
-                                    : Colors.grey)
-                                .withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.autorenew,
-                            color: _otomatikYenile
-                                ? Colors.green
-                                : cs.outline,
-                            size: 22,
-                          ),
+                        secondary: Icon(
+                          Icons.autorenew,
+                          color: _otomatikYenile
+                              ? Colors.green
+                              : Colors.grey,
                         ),
-                        title: Text('Her ay otomatik yenile',
-                            style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14)),
-                        subtitle: Text(
+                        title: const Text('Her ay otomatik yenile'),
+                        subtitle: const Text(
                           'Her ayın başında bu sakin için otomatik aidat oluşturulur.',
-                          style: GoogleFonts.inter(
-                              fontSize: 12, color: cs.onSurfaceVariant),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          style: TextStyle(fontSize: 12),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
-                    Container(
+                    SizedBox(
                       width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: cs.primary
-                                .withOpacity(isDark ? 0.3 : 0.2),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: FilledButton.icon(
+                      child: FilledButton(
                         onPressed: _isSubmitting ? null : _kaydet,
-                        icon: _isSubmitting
+                        child: _isSubmitting
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: Colors.white))
-                            : const Icon(Icons.save_outlined),
-                        label: const Text('Kaydet'),
+                            : const Text('Kaydet'),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-    );
-  }
-
-  Widget _sectionLabel(String text, ColorScheme cs) {
-    return Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: cs.outline,
-        letterSpacing: 1.2,
-      ),
     );
   }
 

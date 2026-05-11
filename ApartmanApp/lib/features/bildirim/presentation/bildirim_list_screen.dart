@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../../core/theme.dart';
 import '../domain/bildirim_model.dart';
 import 'providers/bildirim_provider.dart';
 import '../../../features/auth/presentation/providers/auth_provider.dart';
@@ -110,7 +108,7 @@ class _BildirimListScreenState extends ConsumerState<BildirimListScreen> {
               height: 4,
               decoration: BoxDecoration(
                   color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8)),
+                  borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 16),
             const Text('Bildirim Türü Seçin',
@@ -119,9 +117,9 @@ class _BildirimListScreenState extends ConsumerState<BildirimListScreen> {
             const SizedBox(height: 8),
             ListTile(
               leading: CircleAvatar(
-                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
+                backgroundColor: Colors.blue.withValues(alpha: 0.12),
                 child: const Icon(Icons.campaign_outlined,
-                    color: AppTheme.primaryColor),
+                    color: Colors.blue),
               ),
               title: const Text('Tüm Sakinlere Duyuru'),
               subtitle: const Text('Tüm sakinlere push bildirim gönderir',
@@ -379,9 +377,9 @@ class _DuyuruSheetState extends State<_DuyuruSheet> {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
+                  backgroundColor: Colors.blue.withValues(alpha: 0.12),
                   child: const Icon(Icons.campaign_outlined,
-                      color: AppTheme.primaryColor),
+                      color: Colors.blue),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -864,23 +862,14 @@ class _ErrorBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-          color: cs.error.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cs.error.withOpacity(0.2))),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, size: 18, color: cs.error),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(message,
-                style: GoogleFonts.inter(color: cs.error, fontSize: 13)),
-          ),
-        ],
-      ),
+          color: Colors.red[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.red[200]!)),
+      child: Text(message,
+          style: TextStyle(color: Colors.red[700], fontSize: 13)),
     );
   }
 }
@@ -893,98 +882,49 @@ class _BildirimTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final unread = !bildirim.okundu;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: unread
-            ? cs.primary.withOpacity(isDark ? 0.08 : 0.04)
-            : (isDark ? cs.surfaceContainerHigh : Colors.white),
-        borderRadius: BorderRadius.circular(16),
-        border: unread
-            ? Border.all(color: cs.primary.withOpacity(0.2))
-            : Border.all(
-                color: isDark
-                    ? Colors.white.withOpacity(0.03)
-                    : const Color(0xFFF0F0F0),
-              ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _TipIcon(tip: bildirim.tip),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        bildirim.baslik,
-                        style: GoogleFonts.inter(
-                          fontWeight:
-                              unread ? FontWeight.w700 : FontWeight.w500,
-                          fontSize: 14,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        bildirim.icerik,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.schedule,
-                              size: 12, color: cs.outline),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDate(bildirim.gonderimTarihi),
-                            style: GoogleFonts.inter(
-                                fontSize: 11, color: cs.outline),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (unread)
-                  Container(
-                    width: 10,
-                    height: 10,
-                    margin: const EdgeInsets.only(top: 4),
-                    decoration: BoxDecoration(
-                      color: cs.primary,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: cs.primary.withOpacity(0.4),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
+    return ListTile(
+      onTap: onTap,
+      tileColor: unread
+          ? Theme.of(context)
+              .colorScheme
+              .primaryContainer
+              .withValues(alpha: 0.3)
+          : null,
+      leading: _TipIcon(tip: bildirim.tip),
+      title: Text(
+        bildirim.baslik,
+        style: TextStyle(
+          fontWeight: unread ? FontWeight.bold : FontWeight.normal,
         ),
       ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            bildirim.icerik,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            _formatDate(bildirim.gonderimTarihi),
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+        ],
+      ),
+      trailing: unread
+          ? Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+            )
+          : null,
+      isThreeLine: true,
     );
   }
 
@@ -1004,21 +944,16 @@ class _TipIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final (icon, color) = switch (tip) {
       'ArizaDurum' => (Icons.build_circle_outlined, Colors.orange),
-      'YeniAriza' => (Icons.report_problem_outlined, cs.error),
-      'Duyuru' => (Icons.campaign_outlined, cs.primary),
+      'YeniAriza' => (Icons.report_problem_outlined, Colors.red),
+      'Duyuru' => (Icons.campaign_outlined, Colors.blue),
       'DaireMesaj' => (Icons.home_outlined, Colors.green),
       'BlokMesaj' => (Icons.apartment_outlined, Colors.orange),
-      _ => (Icons.notifications_outlined, cs.outline),
+      _ => (Icons.notifications_outlined, Colors.grey),
     };
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return CircleAvatar(
+      backgroundColor: color.withValues(alpha: 0.15),
       child: Icon(icon, color: color, size: 20),
     );
   }
