@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../domain/ariza_model.dart';
 import '../../../features/auth/presentation/providers/auth_provider.dart';
@@ -71,6 +72,9 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
     ArizaListState arizaState,
     int userId,
   ) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final bloklar = arizaState.arizalar
         .map((a) => a.blokNo)
         .whereType<String>()
@@ -93,11 +97,11 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
           // Blok filtre çipleri
           if (bloklar.isNotEmpty)
             SizedBox(
-              height: 48,
+              height: 52,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 children: [
                   _FilterChip(
                     label: 'Tüm Bloklar',
@@ -107,7 +111,7 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
                   ...bloklar.map((b) => _FilterChip(
                         label: '$b Blok',
                         selected: _blokFilter == b,
-                        color: Theme.of(context).colorScheme.secondary,
+                        color: cs.secondary,
                         icon: Icons.apartment,
                         onTap: () => setState(
                             () => _blokFilter = _blokFilter == b ? null : b),
@@ -116,12 +120,12 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
               ),
             ),
 
-          // Durum + takip filtre çipleri
+          // Durum filtre çipleri
           SizedBox(
-            height: 48,
+            height: 52,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
                 _FilterChip(
                   label: 'Tümü',
@@ -143,7 +147,7 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
             ),
           ),
 
-          const Divider(height: 1),
+          Divider(height: 1, color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFE8E8E8)),
 
           Expanded(
             child: _ArizaListView(
@@ -160,19 +164,9 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton(
-            heroTag: 'refresh',
-            mini: true,
-            onPressed: _load,
-            child: const Icon(Icons.refresh),
-          ),
+          _buildMiniRefreshFab(cs, isDark),
           const SizedBox(width: 12),
-          FloatingActionButton.extended(
-            heroTag: 'add',
-            onPressed: () => context.push('/ana-sayfa/arizalar/yeni'),
-            icon: const Icon(Icons.add),
-            label: const Text('Arıza Bildir'),
-          ),
+          _buildAddFab(context, cs, isDark),
         ],
       ),
     );
@@ -186,7 +180,9 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
     int userId,
     String? blokNo,
   ) {
-    // Sakin listesi: kendi bloğu + ortak alan (blokNo == null)
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final listeTemel = arizaState.arizalar.where((a) {
       final ayniBlok = blokNo != null && a.blokNo == blokNo;
       final ortakAlan = a.blokNo == null || a.blokNo!.isEmpty;
@@ -209,12 +205,11 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
     return Scaffold(
       body: Column(
         children: [
-          // Basit iki çip: Açık / Geçmiş
           SizedBox(
-            height: 48,
+            height: 52,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
                 _FilterChip(
                   label: 'Tümü',
@@ -242,7 +237,7 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
             ),
           ),
 
-          const Divider(height: 1),
+          Divider(height: 1, color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFE8E8E8)),
 
           Expanded(
             child: _ArizaListView(
@@ -261,8 +256,35 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
           ),
         ],
       ),
-      // Sakin için sadece tek FAB: refresh yok, pull-to-refresh kullanılır
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: _buildAddFab(context, cs, isDark),
+    );
+  }
+
+  Widget _buildMiniRefreshFab(ColorScheme cs, bool isDark) {
+    return FloatingActionButton(
+      heroTag: 'refresh',
+      mini: true,
+      onPressed: _load,
+      backgroundColor: isDark ? cs.surfaceContainerHigh : cs.surfaceContainerLow,
+      foregroundColor: cs.primary,
+      elevation: 0,
+      child: const Icon(Icons.refresh, size: 20),
+    );
+  }
+
+  Widget _buildAddFab(BuildContext context, ColorScheme cs, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: cs.primary.withOpacity(isDark ? 0.3 : 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
         heroTag: 'add',
         onPressed: () => context.push('/ana-sayfa/arizalar/yeni'),
         icon: const Icon(Icons.add),
@@ -272,6 +294,7 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
   }
 
   Future<void> _confirmDelete(ArizaModel ariza) async {
+    final cs = Theme.of(context).colorScheme;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -284,7 +307,10 @@ class _ArizaListScreenState extends ConsumerState<ArizaListScreen>
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.error,
+              minimumSize: const Size(80, 40),
+            ),
             child: const Text('Sil'),
           ),
         ],
@@ -338,7 +364,6 @@ class _ArizaListViewState extends ConsumerState<_ArizaListView> {
   }
 
   void _onScroll() {
-    // Listenin son 200px'ine yaklaşınca sonraki sayfayı çek
     if (_scroll.position.pixels >=
         _scroll.position.maxScrollExtent - 200) {
       ref.read(arizaListProvider.notifier).loadMore();
@@ -349,9 +374,10 @@ class _ArizaListViewState extends ConsumerState<_ArizaListView> {
   Widget build(BuildContext context) {
     final arizaState = widget.arizaState;
     final arizalar = widget.arizalar;
+    final cs = Theme.of(context).colorScheme;
 
     if (arizaState.isLoading && arizaState.arizalar.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: cs.primary));
     }
     if (arizaState.errorMessage != null && arizaState.arizalar.isEmpty) {
       return _ErrorView(
@@ -364,42 +390,48 @@ class _ArizaListViewState extends ConsumerState<_ArizaListView> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.handyman_outlined, size: 48, color: Colors.grey),
-            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primary.withOpacity(0.08),
+              ),
+              child: Icon(Icons.handyman_outlined, size: 48, color: cs.primary.withOpacity(0.5)),
+            ),
+            const SizedBox(height: 16),
             Text(widget.emptyMessage,
-                style: const TextStyle(color: Colors.grey, fontSize: 15)),
+                style: GoogleFonts.inter(color: cs.onSurfaceVariant, fontSize: 15)),
           ],
         ),
       );
     }
 
-    // Loader/footer için ekstra item
     final showFooter = arizaState.isLoadingMore || !arizaState.hasMore;
     final itemCount = arizalar.length + (showFooter ? 1 : 0);
 
     return RefreshIndicator(
+      color: cs.primary,
       onRefresh: () async => widget.onRefresh(),
       child: ListView.separated(
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
         itemCount: itemCount,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, i) {
           if (i >= arizalar.length) {
-            // Footer
             if (arizaState.isLoadingMore) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Center(child: CircularProgressIndicator()),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator(color: cs.primary)),
               );
             }
             if (!arizaState.hasMore && arizalar.isNotEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Center(
                   child: Text('Tüm arızalar yüklendi.',
-                      style: TextStyle(color: Colors.grey, fontSize: 13)),
+                      style: GoogleFonts.inter(color: cs.onSurfaceVariant, fontSize: 13)),
                 ),
               );
             }
@@ -440,13 +472,16 @@ class _ArizaCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final dateStr =
         DateFormat('dd.MM.yyyy HH:mm').format(ariza.tarih.toLocal());
     final arizaState = ref.watch(arizaListProvider);
     final takipYukleniyor = arizaState.loadingTakipIds.contains(ariza.id);
     final takipGoster = !isAdmin;
+    final dColor = durumColor(ariza.durum);
 
-    // Bildiren gösterimi: admin tam bilgi görür, sakin gizlilik kuralına tabi
+    // Bildiren gösterimi
     final String bildirenLabel;
     if (isAdmin) {
       bildirenLabel =
@@ -465,8 +500,8 @@ class _ArizaCard extends ConsumerWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: Colors.red,
-          borderRadius: BorderRadius.circular(12),
+          color: cs.error,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
@@ -474,117 +509,177 @@ class _ArizaCard extends ConsumerWidget {
         onDelete?.call();
         return false;
       },
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? cs.surfaceContainerHigh : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withOpacity(0.05)
+                : const Color(0xFFE8E8E8),
+          ),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            if (isDark)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Icon(durumIcon(ariza.durum),
-                        color: durumColor(ariza.durum), size: 18),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        ariza.baslik,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                // Sol kenar renk çizgisi
+                Container(
+                  width: 4,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: dColor,
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(16),
                     ),
-                    // Öncelik rozeti yalnızca admin'e gösterilir
-                    if (isAdmin) _PriorityBadge(oncelik: ariza.oncelik),
-                    if (takipGoster) ...[
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: takipYukleniyor
-                            ? null
-                            : () => ref
-                                .read(arizaListProvider.notifier)
-                                .toggleTakip(ariza.id),
-                        child: Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: takipYukleniyor
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
-                                )
-                              : Icon(
-                                  ariza.kullaniciTakipEdiyor
-                                      ? Icons.notifications_active
-                                      : Icons.notifications_none,
-                                  size: 20,
-                                  color: ariza.kullaniciTakipEdiyor
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Colors.grey[500],
-                                ),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  ariza.aciklama,
-                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _DurumBadge(durum: ariza.durum),
-                    if (ariza.takipciSayisi > 0) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            const Icon(Icons.notifications_active,
-                                size: 11, color: Colors.orange),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: dColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(durumIcon(ariza.durum),
+                                  color: dColor, size: 18),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                ariza.baslik,
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: cs.onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isAdmin) _PriorityBadge(oncelik: ariza.oncelik),
+                            if (takipGoster) ...[
+                              const SizedBox(width: 4),
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: takipYukleniyor
+                                    ? null
+                                    : () => ref
+                                        .read(arizaListProvider.notifier)
+                                        .toggleTakip(ariza.id),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: takipYukleniyor
+                                      ? SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: cs.primary),
+                                        )
+                                      : Icon(
+                                          ariza.kullaniciTakipEdiyor
+                                              ? Icons.notifications_active
+                                              : Icons.notifications_none,
+                                          size: 20,
+                                          color: ariza.kullaniciTakipEdiyor
+                                              ? cs.primary
+                                              : cs.outline,
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          ariza.aciklama,
+                          style: GoogleFonts.inter(
+                              color: cs.onSurfaceVariant, fontSize: 13),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            _DurumBadge(durum: ariza.durum),
+                            if (ariza.takipciSayisi > 0) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.notifications_active,
+                                        size: 11, color: Colors.orange),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      '${ariza.takipciSayisi}',
+                                      style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          color: Colors.orange,
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            Icon(Icons.person_outline,
+                                size: 13, color: cs.outline),
                             const SizedBox(width: 3),
                             Text(
-                              '${ariza.takipciSayisi}',
-                              style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.w600),
+                              bildirenLabel,
+                              style: GoogleFonts.inter(
+                                  fontSize: 11, color: cs.outline),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                    const Spacer(),
-                    Icon(Icons.person_outline,
-                        size: 13, color: Colors.grey[500]),
-                    const SizedBox(width: 3),
-                    Text(
-                      bildirenLabel,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.schedule, size: 12, color: cs.outline),
+                            const SizedBox(width: 4),
+                            Text(
+                              dateStr,
+                              style: GoogleFonts.inter(
+                                  fontSize: 11, color: cs.outline),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  dateStr,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                  ),
                 ),
               ],
             ),
@@ -605,15 +700,15 @@ class _DurumBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = durumColor(durum);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(
         durum.label,
-        style: TextStyle(
+        style: GoogleFonts.inter(
             fontSize: 11, color: color, fontWeight: FontWeight.w600),
       ),
     );
@@ -628,14 +723,14 @@ class _PriorityBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = oncelikColor(oncelik);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         oncelik.label,
-        style: TextStyle(
+        style: GoogleFonts.inter(
             fontSize: 11, color: color, fontWeight: FontWeight.w600),
       ),
     );
@@ -659,22 +754,45 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? Theme.of(context).colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final c = color ?? cs.primary;
+
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        avatar: icon != null
-            ? Icon(icon, size: 14, color: selected ? c : Colors.grey)
-            : null,
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        selectedColor: c.withValues(alpha: 0.2),
-        checkmarkColor: c,
-        labelStyle: TextStyle(
-          color: selected ? c : null,
-          fontWeight: selected ? FontWeight.w600 : null,
-          fontSize: 12,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? c.withOpacity(isDark ? 0.2 : 0.15)
+                : (isDark
+                    ? cs.surfaceContainerHighest
+                    : cs.surfaceContainerHigh),
+            borderRadius: BorderRadius.circular(20),
+            border: selected
+                ? Border.all(color: c.withOpacity(0.4))
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: selected ? c : cs.onSurfaceVariant),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  color: selected ? c : cs.onSurfaceVariant,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -689,16 +807,33 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, size: 48, color: Colors.red),
-          const SizedBox(height: 12),
-          Text(message, textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          FilledButton(onPressed: onRetry, child: const Text('Tekrar Dene')),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.error.withOpacity(0.08),
+              ),
+              child: Icon(Icons.error_outline, size: 48, color: cs.error),
+            ),
+            const SizedBox(height: 16),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: cs.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: onRetry,
+              style: FilledButton.styleFrom(minimumSize: const Size(140, 44)),
+              child: const Text('Tekrar Dene'),
+            ),
+          ],
+        ),
       ),
     );
   }

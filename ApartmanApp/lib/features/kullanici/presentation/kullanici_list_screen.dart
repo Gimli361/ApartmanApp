@@ -7,6 +7,7 @@ import '../../../shared/models/blok_model.dart';
 import '../../../shared/models/daire_model.dart';
 import '../../../shared/services/api_service.dart';
 import 'providers/kullanici_provider.dart';
+import 'package:apartman_app/core/theme.dart';
 
 class KullaniciListScreen extends ConsumerWidget {
   const KullaniciListScreen({super.key});
@@ -134,13 +135,13 @@ class _KullaniciTile extends ConsumerWidget {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor:
-            (isAdmin ? Colors.red : Colors.blue).withValues(alpha: 0.12),
+            (isAdmin ? Colors.red : AppTheme.primaryColor).withValues(alpha: 0.12),
         child: Text(
           kullanici.adSoyad.isNotEmpty
               ? kullanici.adSoyad[0].toUpperCase()
               : '?',
           style: TextStyle(
-            color: isAdmin ? Colors.red[700] : Colors.blue[700],
+            color: isAdmin ? Colors.red[700] : AppTheme.primaryColor.withOpacity(0.7),
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -160,7 +161,7 @@ class _KullaniciTile extends ConsumerWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (isAdmin ? Colors.red : Colors.blue)
+                  color: (isAdmin ? Colors.red : AppTheme.primaryColor)
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -168,7 +169,7 @@ class _KullaniciTile extends ConsumerWidget {
                   isAdmin ? 'Yönetici' : 'Sakin',
                   style: TextStyle(
                     fontSize: 11,
-                    color: isAdmin ? Colors.red[700] : Colors.blue[700],
+                    color: isAdmin ? Colors.red[700] : AppTheme.primaryColor.withOpacity(0.7),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -184,7 +185,7 @@ class _KullaniciTile extends ConsumerWidget {
           ),
           const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+            icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryColor),
             onPressed: () => _showDuzenleSheet(context, ref),
             tooltip: 'Düzenle',
           ),
@@ -320,7 +321,7 @@ class _EkleSheetState extends ConsumerState<_EkleSheet> {
     } else {
       setState(() {
         _hata = widget.ref.read(kullaniciListProvider).errorMessage ??
-            'Bir hata oluştu.';
+            'Üye eklenemedi. Lütfen tekrar deneyin.';
       });
     }
   }
@@ -694,13 +695,13 @@ class _DuzenleSheetState extends ConsumerState<_DuzenleSheet>
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: Colors.blue.withValues(alpha: 0.12),
+                  backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
                   child: Text(
                     widget.kullanici.adSoyad.isNotEmpty
                         ? widget.kullanici.adSoyad[0].toUpperCase()
                         : '?',
                     style: const TextStyle(
-                        color: Colors.blue, fontWeight: FontWeight.bold),
+                        color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: 12),

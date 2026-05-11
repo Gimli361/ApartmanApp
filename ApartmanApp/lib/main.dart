@@ -4,12 +4,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'core/strings.dart';
+import 'l10n/app_localizations.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/bildirim/presentation/providers/bildirim_provider.dart';
 import 'shared/services/notification_service.dart';
@@ -160,6 +162,14 @@ class _ApartmanAppState extends ConsumerState<ApartmanApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
+      locale: const Locale('tr'),
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       routerConfig: router,
       builder: (context, child) => _AppErrorBoundary(child: child!),
     );
